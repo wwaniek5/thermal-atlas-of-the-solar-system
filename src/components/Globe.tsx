@@ -6,7 +6,7 @@ import type { GeometryCollection, Topology } from 'topojson-specification'
 import countries110m from 'world-atlas/countries-110m.json'
 import { sampleAt, type Grid } from '../data/grid'
 import type { Isotherm } from '../map/isotherms'
-import { placeLabels } from '../map/labels'
+import { createLabelPlacer } from '../map/labels'
 import { bandFill, FREEZING, formatTemperature, type TemperatureScale } from '../map/scale'
 
 const SIZE = 640
@@ -50,9 +50,10 @@ export function Globe({ grid, isotherms, scale, showLabels }: Props) {
   )
   const path = useMemo(() => geoPath(projection), [projection])
   const freezing = FREEZING[scale.units]
+  const [placeLabels] = useState(createLabelPlacer)
   const labels = useMemo(
     () => (showLabels ? placeLabels(isotherms, scale.thresholds, freezing, projection) : []),
-    [showLabels, isotherms, scale.thresholds, freezing, projection],
+    [placeLabels, showLabels, isotherms, scale.thresholds, freezing, projection],
   )
 
   const toSvg = (e: PointerEvent): [number, number] => {
