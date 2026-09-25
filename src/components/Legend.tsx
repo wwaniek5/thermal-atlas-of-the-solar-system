@@ -1,34 +1,48 @@
-import { bandColor } from '../map/colors'
+import { bandFill, FREEZING, type TemperatureScale } from '../map/scale'
 
 interface Props {
-  thresholds: number[]
-  step: number
+  scale: TemperatureScale
 }
 
-/** One swatch per band, labeled at every other isotherm. */
-export function Legend({ thresholds, step }: Props) {
-  if (thresholds.length === 0) return null
-  const bands = [thresholds[0] - step, ...thresholds]
-  const labelEvery = Math.max(1, Math.ceil(thresholds.length / 10))
+/**
+ * One swatch per band, as wide as its temperature range. Isotherms are
+ * labeled at regular intervals, plus the freezing line.
+ */
+export function Legend({ scale }: Props) {
+  const { bands, thresholds, units, step } = scale
+  if (bands.length === 0) return null
+  const lo = bands[0].lower
+  const span = bands[bands.length - 1].upper - lo
+  const at = (v: number) => `${((v - lo) / span) * 100}%`
+
+  // Aim for about ten labels, on multiples of the step.
+  const every = step * Math.max(1, Math.ceil(thresholds.length / 10))
+  const freezing = FREEZING[units]
+  const labeled = thresholds.filter((t) => t % every === 0 && Math.abs(t - freezing) > every / 2)
+  labeled.push(freezing)
 
   return (
-    <figure className="legend" aria-label="Temperature color scale in degrees Celsius">
+    <figure className="legend" aria-label={`Temperature color scale in degrees ${units === 'C' ? 'Celsius' : 'Fahrenheit'}`}>
       <div className="legend-bar">
-        {bands.map((lower) => (
+        {bands.map((b) => (
           <span
-            key={lower}
+            key={b.lower}
             className="legend-swatch"
-            style={{ background: bandColor(lower, step) }}
-            title={`${lower} to ${lower + step} °C`}
+            style={{ flexGrow: b.upper - b.lower, background: bandFill(b, units) }}
+            title={`${b.lower} to ${b.upper} °${units}`}
           />
         ))}
       </div>
-      <div className="legend-ticks" style={{ gridTemplateColumns: `repeat(${bands.length}, 1fr)` }}>
-        {bands.map((lower, i) => (
-          <span key={lower}>{i > 0 && (i - 1) % labelEvery === 0 ? lower : ''}</span>
-        ))}
+      <div className="legend-ticks">
+        {thresholds
+          .filter((t) => labeled.includes(t))
+          .map((t) => (
+            <span key={t} style={{ left: at(t) }} className={t === freezing ? 'legend-freezing' : undefined}>
+              {t}
+            </span>
+          ))}
       </div>
-      <figcaption>°C</figcaption>
+      <figcaption>°{units}</figcaption>
     </figure>
   )
 }

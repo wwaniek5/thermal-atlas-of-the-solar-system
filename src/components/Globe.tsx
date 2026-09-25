@@ -5,8 +5,9 @@ import { feature, mesh } from 'topojson-client'
 import type { GeometryCollection, Topology } from 'topojson-specification'
 import countries110m from 'world-atlas/countries-110m.json'
 import { sampleAt, type Grid } from '../data/grid'
-import { bandColor } from '../map/colors'
 import type { Isotherm } from '../map/isotherms'
+import { placeLabels } from '../map/labels'
+import { bandFill, FREEZING, formatTemperature, type TemperatureScale } from '../map/scale'
 
 const SIZE = 640
 const PADDING = 8
@@ -19,8 +20,11 @@ const sphere = { type: 'Sphere' } as const
 
 interface Props {
   grid: Grid
+  /** isotherms[i] is the contour for scale.thresholds[i]. */
   isotherms: Isotherm[]
-  step: number
+  scale: TemperatureScale
+  /** Line labels; hidden while the year plays. */
+  showLabels: boolean
 }
 
 interface Hover {
@@ -31,7 +35,7 @@ interface Hover {
   celsius: number
 }
 
-export function Globe({ grid, isotherms, step }: Props) {
+export function Globe({ grid, isotherms, scale, showLabels }: Props) {
   const [rotation, setRotation] = useState<[number, number]>([-10, -25])
   const [hover, setHover] = useState<Hover | null>(null)
   const drag = useRef<{ x: number; y: number; rotation: [number, number] } | null>(null)
@@ -45,9 +49,11 @@ export function Globe({ grid, isotherms, step }: Props) {
     [rotation],
   )
   const path = useMemo(() => geoPath(projection), [projection])
-
-  // Everything colder than the lowest isotherm shows the sphere's own fill.
-  const baseColor = bandColor((isotherms[0]?.threshold ?? 0) - step, step)
+  const freezing = FREEZING[scale.units]
+  const labels = useMemo(
+    () => (showLabels ? placeLabels(isotherms, scale.thresholds, freezing, projection) : []),
+    [showLabels, isotherms, scale.thresholds, freezing, projection],
+  )
 
   const toSvg = (e: PointerEvent): [number, number] => {
     const box = svgRef.current!.getBoundingClientRect()
@@ -98,21 +104,29 @@ export function Globe({ grid, isotherms, step }: Props) {
         onPointerCancel={onPointerUp}
         onPointerLeave={() => setHover(null)}
       >
-        <path d={path(sphere) ?? ''} fill={baseColor} />
-        {isotherms.map((iso) => (
-          <path key={`band${iso.threshold}`} d={path(iso.area) ?? ''} fill={bandColor(iso.threshold, step)} />
+        {/* Everything colder than the lowest isotherm shows the sphere's own fill. */}
+        <path d={path(sphere) ?? ''} fill={bandFill(scale.bands[0], scale.units)} />
+        {isotherms.map((iso, i) => (
+          <path key={`band${i}`} d={path(iso.area) ?? ''} fill={bandFill(scale.bands[i + 1], scale.units)} />
         ))}
         <path d={path(graticule) ?? ''} className="graticule" />
         <path d={path(land) ?? ''} className="coast" />
         <path d={path(borders) ?? ''} className="border" />
-        {isotherms.map((iso) => (
+        {isotherms.map((iso, i) => (
           <path
-            key={`line${iso.threshold}`}
+            key={`line${i}`}
             d={path(iso.line) ?? ''}
-            className={iso.threshold === 0 ? 'isotherm isotherm-zero' : 'isotherm'}
+            className={scale.thresholds[i] === freezing ? 'isotherm isotherm-freezing' : 'isotherm'}
           />
         ))}
         <path d={path(sphere) ?? ''} className="outline" />
+        <g className="labels" aria-hidden="true">
+          {labels.map((l, i) => (
+            <text key={i} x={l.x} y={l.y} className={l.freezing ? 'label label-freezing' : 'label'}>
+              {l.text}
+            </text>
+          ))}
+        </g>
         {hover && <circle cx={hover.x} cy={hover.y} r={4} className="hover-dot" />}
       </svg>
       {hover && (
@@ -120,7 +134,7 @@ export function Globe({ grid, isotherms, step }: Props) {
           className="tooltip"
           style={{ left: `${(hover.x / SIZE) * 100}%`, top: `${(hover.y / SIZE) * 100}%` }}
         >
-          <strong>{hover.celsius.toFixed(1)} °C</strong>
+          <strong>{formatTemperature(hover.celsius, scale.units)}</strong>
           <span>{formatLonLat(hover.lon, hover.lat)}</span>
         </div>
       )}

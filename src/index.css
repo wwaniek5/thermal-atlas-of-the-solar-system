@@ -92,9 +92,28 @@ h1 {
   stroke-linejoin: round;
 }
 
-.isotherm-zero {
+.isotherm-freezing {
   stroke: rgba(0, 0, 0, 0.7);
   stroke-width: 1.5;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  fill: var(--ink);
+  text-anchor: middle;
+  dominant-baseline: central;
+  /* A halo in the surface color keeps labels readable on any band. */
+  stroke: rgba(252, 252, 251, 0.85);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  pointer-events: none;
+}
+
+.label-freezing {
+  font-weight: 700;
 }
 
 .outline {
@@ -149,17 +168,24 @@ h1 {
 }
 
 .legend-ticks {
-  display: grid;
+  position: relative;
+  height: 1.2em;
   margin-top: 4px;
   color: var(--ink-muted);
   font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
 }
 
-/* Each label sits on the boundary to the left of its swatch. */
+/* Each label is centered on the isotherm it names. */
 .legend-ticks span {
+  position: absolute;
   transform: translateX(-50%);
   white-space: nowrap;
+}
+
+.legend-freezing {
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .legend figcaption {
@@ -239,4 +265,59 @@ h1 {
   .ticks span:nth-child(even) {
     visibility: hidden;
   }
+}
+
+/* Units and spacing controls */
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-top: 12px;
+}
+
+.segmented {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.segmented-label {
+  color: var(--ink-secondary);
+  font-size: 0.8rem;
+}
+
+.segmented-buttons {
+  display: flex;
+  padding: 2px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.segmented-buttons button {
+  min-width: 40px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-secondary);
+  font: inherit;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.segmented-buttons button:hover {
+  color: var(--ink);
+}
+
+.segmented-buttons button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.segmented-buttons button:focus-visible {
+  outline: 2px solid #2a78d6;
+  outline-offset: 1px;
 }

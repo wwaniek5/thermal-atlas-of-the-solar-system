@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { geoArea, geoContains, geoOrthographic, geoPath } from 'd3-geo'
 import { describe, expect, it } from 'vitest'
-import { sampleAt, toGrid, type Manifest } from '../data/grid'
-import { computeIsotherms, splitAtGridEdges, thresholdsFor } from './isotherms'
+import { gridAt, sampleAt, toGrid, type Manifest } from '../data/grid'
+import { computeIsotherms, splitAtGridEdges } from './isotherms'
+import { buildScale, STEP_OPTIONS } from './scale'
+
+const EVERY_5C = buildScale(-75, 40, 'C', 5).thresholdsC
 
 const dataDir = new URL('../../public/data/noaa/', import.meta.url)
 const manifest: Manifest = JSON.parse(readFileSync(new URL('manifest.json', dataDir), 'utf8'))
@@ -10,13 +13,6 @@ const month = (m: number) =>
   toGrid(manifest, JSON.parse(readFileSync(new URL(manifest.months[m - 1], dataDir), 'utf8')).values)
 
 const SPHERE = 4 * Math.PI
-
-describe('thresholdsFor', () => {
-  it('lists multiples of the step inside the range', () => {
-    expect(thresholdsFor(-12, 11, 5)).toEqual([-10, -5, 0, 5, 10])
-    expect(thresholdsFor(-12, 11, 2.5)).toEqual([-10, -7.5, -5, -2.5, 0, 2.5, 5, 7.5, 10])
-  })
-})
 
 describe('computeIsotherms on NOAA data', () => {
   const july = month(7)
@@ -60,7 +56,7 @@ describe('poles and seam', () => {
     const points: [number, number][] = [[0, 90], [0, -90], [180, 0], [-180, 45], [180, -60]]
     for (const m of [1, 4, 7, 10]) {
       const grid = month(m)
-      for (const iso of computeIsotherms(grid, thresholdsFor(-75, 40, 5))) {
+      for (const iso of computeIsotherms(grid, EVERY_5C)) {
         for (const p of points) {
           const t = sampleAt(grid, p[0], p[1])
           if (Math.abs(t - iso.threshold) < 0.5) continue // too close to call
@@ -72,7 +68,7 @@ describe('poles and seam', () => {
 
   it('closes every isotherm into a loop', () => {
     for (let m = 1; m <= 12; m++) {
-      for (const iso of computeIsotherms(month(m), thresholdsFor(-75, 40, 5))) {
+      for (const iso of computeIsotherms(month(m), EVERY_5C)) {
         for (const loop of iso.line.coordinates) {
           expect(loop[0]).toEqual(loop.at(-1))
         }
@@ -81,12 +77,30 @@ describe('poles and seam', () => {
   })
 })
 
+describe('every frame of the animation', () => {
+  // Regression: when a grid value equalled an isotherm exactly (e.g. -24.0 °C
+  // at a pole with 2° spacing), pieces could not be joined and the page crashed.
+  it('joins all pieces for every spacing, on and between months', () => {
+    const year = Array.from({ length: 12 }, (_, i) => month(i + 1))
+    const broken: string[] = []
+    for (const units of ['C', 'F'] as const) {
+      for (const step of STEP_OPTIONS[units]) {
+        const { thresholdsC } = buildScale(-75, 40, units, step)
+        for (let p = 0; p < 12; p += 0.25) {
+          computeIsotherms(gridAt(year, p), thresholdsC, (pt) => broken.push(`${units}/${step} at ${p}: ${pt}`))
+        }
+      }
+    }
+    expect(broken).toEqual([])
+  })
+})
+
 describe('rendering on the globe', () => {
   it('projects every month and isotherm without errors', () => {
     const rotations: [number, number][] = [[0, 0], [180, 0], [-10, -25], [0, -90], [0, 90]]
     for (let m = 1; m <= 12; m++) {
       const grid = month(m)
-      const isotherms = computeIsotherms(grid, thresholdsFor(-75, 40, 5))
+      const isotherms = computeIsotherms(grid, EVERY_5C)
       for (const rotation of rotations) {
         const path = geoPath(geoOrthographic().rotate(rotation))
         for (const iso of isotherms) {

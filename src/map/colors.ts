@@ -25,8 +25,3 @@ const scale = scaleLinear<string>()
 export function temperatureColor(celsius: number): string {
   return scale(celsius)
 }
-
-/** Color for the band [lower, lower + step): the color of its midpoint. */
-export function bandColor(lower: number, step: number): string {
-  return scale(lower + step / 2)
-}

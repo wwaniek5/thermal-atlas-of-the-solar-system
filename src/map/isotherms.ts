@@ -17,15 +17,6 @@ export interface Isotherm {
   line: MultiLineString
 }
 
-/** Isotherm thresholds every `step` degrees that fall inside [min, max]. */
-export function thresholdsFor(min: number, max: number, step: number): number[] {
-  const out: number[] = []
-  for (let t = Math.ceil(min / step) * step; t <= max; t += step) {
-    out.push(Math.round(t * 1e6) / 1e6)
-  }
-  return out
-}
-
 /**
  * Contours on the flat grid come out as shapes bounded partly by the grid's
  * edges: the antimeridian seam and the pole rows. Those edges aren't real
@@ -34,24 +25,38 @@ export function thresholdsFor(min: number, max: number, step: number): number[] 
  * the remaining pieces are joined across the seam into loops that close on
  * the sphere.
  */
-export function computeIsotherms(grid: Grid, thresholds: number[]): Isotherm[] {
+export function computeIsotherms(
+  grid: Grid,
+  thresholds: number[],
+  onBroken: (point: Position) => void = warnBroken,
+): Isotherm[] {
   const generator = contours().size([grid.width, grid.height])
   const toLonLat = gridToLonLat(grid)
   const min = grid.values.reduce((a, b) => Math.min(a, b), Infinity)
   return thresholds.map((threshold) => {
+    const level = threshold + THRESHOLD_OFFSET
     const pieces = generator
-      .contour(grid.values as unknown as number[], threshold)
+      .contour(grid.values as unknown as number[], level)
       .coordinates.flat()
       .map((ring) => dedupe(ring.map(toLonLat)).reverse())
       .flatMap(splitAtGridEdges)
-    const loops = joinAcrossSeam(pieces).filter(isRealRing)
+    const loops = joinAcrossSeam(pieces, onBroken).filter(isRealRing)
     return {
       threshold,
-      area: loops.length === 0 && min >= threshold ? { type: 'Sphere' } : { type: 'Polygon', coordinates: loops },
+      area: loops.length === 0 && min >= level ? { type: 'Sphere' } : { type: 'Polygon', coordinates: loops },
       line: { type: 'MultiLineString', coordinates: loops },
     }
   })
 }
+
+/**
+ * Contours are drawn this far above their nominal value. When a grid value
+ * equals the threshold exactly (common: data comes in tenths of a degree,
+ * isotherms are whole degrees), the contour passes exactly through that grid
+ * point, which on the seam or a pole row leaves pieces that can't be joined.
+ * The offset is far below what the data or the eye can resolve.
+ */
+const THRESHOLD_OFFSET = 1e-4
 
 /**
  * d3-contour puts value (col, row) at (col + 0.5, row + 0.5) and closes
@@ -101,12 +106,17 @@ export function splitAtGridEdges(ring: Position[]): Position[][] {
  * the seam, and continues with the piece starting at the same latitude on
  * the other side of it (lon +180 and -180 are the same meridian). The grid's
  * seam columns hold identical values, so those latitudes match exactly.
+ *
+ * Should a piece have nothing to join, its loop is closed where it stands
+ * and reported through `onBroken`: one frame drawn slightly wrong beats a
+ * crashed page.
  */
-export function joinAcrossSeam(pieces: Position[][]): Position[][] {
+export function joinAcrossSeam(pieces: Position[][], onBroken: (point: Position) => void): Position[][] {
   const loops: Position[][] = []
   const byStart = new Map<string, Position[]>()
   for (const piece of pieces) {
     if (samePoint(piece[0], piece.at(-1)!)) loops.push(piece)
+    else if (byStart.has(seamKey(piece[0]))) onBroken(piece[0])
     else byStart.set(seamKey(piece[0]), piece)
   }
 
@@ -117,7 +127,10 @@ export function joinAcrossSeam(pieces: Position[][]): Position[][] {
       const endKey = seamKey(loop.at(-1)!)
       if (endKey === startKey) break
       const next = byStart.get(endKey)
-      if (!next) throw new Error(`isotherm piece ends at ${loop.at(-1)} with nothing to join`)
+      if (!next) {
+        onBroken(loop.at(-1)!)
+        break
+      }
       byStart.delete(endKey)
       loop.push(...next)
     }
@@ -130,6 +143,10 @@ export function joinAcrossSeam(pieces: Position[][]): Position[][] {
 /** Identifies a point on the seam regardless of which side it's on. */
 function seamKey([lon, lat]: Position): string {
   return `${Math.abs(lon) === 180 ? 180 : lon},${lat}`
+}
+
+function warnBroken(point: Position): void {
+  console.warn(`isotherm piece ends at ${point} with nothing to join`)
 }
 
 function onSameGridEdge([lonA, latA]: Position, [lonB, latB]: Position): boolean {
