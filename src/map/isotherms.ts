@@ -1,6 +1,6 @@
 import { contours } from 'd3-contour'
 import type { GeoSphere } from 'd3-geo'
-import type { MultiLineString, Polygon, Position } from 'geojson'
+import type { MultiLineString, MultiPolygon, Polygon, Position } from 'geojson'
 import type { Grid } from '../data/grid'
 
 export interface Isotherm {
@@ -11,9 +11,11 @@ export interface Isotherm {
    * one polygon: d3-geo decides inside/outside by winding, so loops need no
    * outer/hole nesting. The whole sphere when the threshold is below every
    * grid value, since such an area has no boundary.
+   *
+   * For a regional grid, polygons clipped to the grid's lon/lat box.
    */
-  area: Polygon | GeoSphere
-  /** The isotherm itself: the same loops as the area's boundary. */
+  area: Polygon | MultiPolygon | GeoSphere
+  /** The isotherm itself: the area's boundary without grid-edge stretches. */
   line: MultiLineString
 }
 
@@ -32,14 +34,28 @@ export function computeIsotherms(
 ): Isotherm[] {
   const generator = contours().size([grid.width, grid.height])
   const toLonLat = gridToLonLat(grid)
+  const edges = gridEdges(grid)
   const min = grid.values.reduce((a, b) => Math.min(a, b), Infinity)
   return thresholds.map((threshold) => {
     const level = threshold + THRESHOLD_OFFSET
-    const pieces = generator
+    const polygons = generator
       .contour(grid.values as unknown as number[], level)
-      .coordinates.flat()
-      .map((ring) => dedupe(ring.map(toLonLat)).reverse())
-      .flatMap(splitAtGridEdges)
+      .coordinates.map((polygon) => polygon.map((ring) => dedupe(ring.map(toLonLat)).reverse()))
+
+    if (!grid.wraps) {
+      // A region is small enough that shapes along its edges are unambiguous
+      // for d3-geo, so they fill as they are; only the lines lose the edges.
+      const areas = polygons
+        .filter((polygon) => isRealRing(polygon[0]))
+        .map(([outer, ...holes]) => [outer, ...holes.filter(isRealRing)])
+      return {
+        threshold,
+        area: { type: 'MultiPolygon', coordinates: areas },
+        line: { type: 'MultiLineString', coordinates: areas.flat().flatMap((ring) => splitAtGridEdges(ring, edges)) },
+      }
+    }
+
+    const pieces = polygons.flat().flatMap((ring) => splitAtGridEdges(ring, edges))
     const loops = joinAcrossSeam(pieces, onBroken).filter(isRealRing)
     return {
       threshold,
@@ -60,8 +76,9 @@ const THRESHOLD_OFFSET = 1e-4
 
 /**
  * d3-contour puts value (col, row) at (col + 0.5, row + 0.5) and closes
- * shapes along a border half a cell further out. Clamp that border onto
- * exactly -180/+180 and +90/-90 so the globe has no gaps.
+ * shapes along a border half a cell further out. Clamp that border onto the
+ * outermost grid points (for a whole-globe grid exactly -180/+180 and
+ * +90/-90) so the globe has no gaps.
  */
 export function gridToLonLat(grid: Grid): (p: Position) => Position {
   const { lat0, dlat, lon0, dlon } = grid.info
@@ -72,18 +89,34 @@ export function gridToLonLat(grid: Grid): (p: Position) => Position {
   }
 }
 
+/** The lon/lat of a grid's outermost columns and rows. */
+export interface GridEdges {
+  west: number
+  east: number
+  north: number
+  south: number
+}
+
+export const GLOBE_EDGES: GridEdges = { west: -180, east: 180, north: 90, south: -90 }
+
+function gridEdges(grid: Grid): GridEdges {
+  const { lat0, dlat, lon0, dlon } = grid.info
+  return { west: lon0, east: lon0 + (grid.width - 1) * dlon, north: lat0, south: lat0 + (grid.height - 1) * dlat }
+}
+
 /**
  * Break a closed ring into lines, dropping stretches that run along the
- * antimeridian seam or a pole: those are artefacts of the flat grid, not
- * isotherms. A ring that never touches an edge comes back whole.
+ * grid's edges (for the whole globe: the antimeridian seam and the poles).
+ * Those are artefacts of the flat grid, not isotherms. A ring that never
+ * touches an edge comes back whole.
  */
-export function splitAtGridEdges(ring: Position[]): Position[][] {
+export function splitAtGridEdges(ring: Position[], edges: GridEdges = GLOBE_EDGES): Position[][] {
   const lines: Position[][] = []
   let current: Position[] = []
   for (let i = 1; i < ring.length; i++) {
     const a = ring[i - 1]
     const b = ring[i]
-    if (onSameGridEdge(a, b)) {
+    if (onSameGridEdge(a, b, edges)) {
       if (current.length > 1) lines.push(current)
       current = []
       continue
@@ -149,8 +182,10 @@ function warnBroken(point: Position): void {
   console.warn(`isotherm piece ends at ${point} with nothing to join`)
 }
 
-function onSameGridEdge([lonA, latA]: Position, [lonB, latB]: Position): boolean {
-  return (Math.abs(lonA) === 180 && lonA === lonB) || (Math.abs(latA) === 90 && latA === latB)
+function onSameGridEdge([lonA, latA]: Position, [lonB, latB]: Position, e: GridEdges): boolean {
+  return (
+    ((lonA === e.west || lonA === e.east) && lonA === lonB) || ((latA === e.north || latA === e.south) && latA === latB)
+  )
 }
 
 function samePoint(a: Position, b: Position): boolean {

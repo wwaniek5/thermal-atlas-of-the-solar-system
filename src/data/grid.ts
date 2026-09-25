@@ -61,29 +61,38 @@ export interface PyramidLevel {
 
 export interface Grid {
   info: GridInfo
-  /** Width of `values`: nlon + 1, because column 0 is repeated at the end
-   * (lon +180) so contours close across the antimeridian. */
+  /**
+   * True for whole-globe grids: then `width` is nlon + 1, because column 0 is
+   * repeated at the end (lon +180) so contours close across the antimeridian.
+   * False for regional grids cut from tiles, which cover a lon/lat box.
+   */
+  wraps: boolean
   width: number
   height: number
   /** Degrees Celsius, row-major, `width` columns. */
   values: Float32Array
 }
 
-/**
- * A source's whole-globe grids, coarsest first; each entry is the twelve
- * months, January first. Format 1 sources have a single entry.
- */
-export async function loadGlobeLevels(source: string): Promise<Grid[][]> {
+export interface LoadedSource {
+  /** Whole-globe grids, coarsest first; each entry is the twelve months. */
+  globe: Grid[][]
+  /** Format 2 manifest, for loading zoom tiles; null for format 1. */
+  pyramid: PyramidManifest | null
+}
+
+/** A source's whole-globe grids, plus what's needed to load its zoom tiles. */
+export async function loadSource(source: string): Promise<LoadedSource> {
   const manifest = await fetchJson<Manifest | PyramidManifest>(`${dataUrl(source)}/manifest.json`)
   if ('format' in manifest && manifest.format === 2) {
     const untiled = manifest.levels.flatMap((level, index) => (level.file ? [{ level, index }] : []))
-    return Promise.all(
+    const globe = await Promise.all(
       untiled.map(async ({ level, index }) => {
         const res = await fetch(`${dataUrl(source)}/${level.file}`)
         if (!res.ok) throw new Error(`${level.file}: ${res.status} ${res.statusText}`)
         return pyramidYear(manifest, index, await res.arrayBuffer())
       }),
     )
+    return { globe, pyramid: manifest }
   }
   const v1 = manifest as Manifest
   const year = await Promise.all(
@@ -92,7 +101,7 @@ export async function loadGlobeLevels(source: string): Promise<Grid[][]> {
       return toGrid(v1, values)
     }),
   )
-  return [year]
+  return { globe: [year], pyramid: null }
 }
 
 /** Split an untiled format 2 level (int16, [month][row][col]) into 12 grids. */
@@ -150,7 +159,7 @@ export function toGrid(info: GridInfo, raw: ArrayLike<number>): Grid {
       values[r * width + c] = raw[r * nlon + (c % nlon)] * scale
     }
   }
-  return { info, width, height: nlat, values }
+  return { info, wraps: true, width, height: nlat, values }
 }
 
 /** Bilinear temperature at a lon/lat, in degrees Celsius. */
@@ -168,7 +177,7 @@ export function sampleAt(grid: Grid, lon: number, lat: number): number {
   return top * (1 - fy) + bottom * fy
 }
 
-function dataUrl(source: string): string {
+export function dataUrl(source: string): string {
   return `${import.meta.env.BASE_URL}data/${source}`
 }
 

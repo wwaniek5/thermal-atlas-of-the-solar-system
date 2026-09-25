@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { geoArea, geoContains, geoOrthographic, geoPath } from 'd3-geo'
 import { describe, expect, it } from 'vitest'
-import { gridAt, sampleAt, toGrid, type Manifest } from '../data/grid'
+import { gridAt, sampleAt, toGrid, type Manifest, type PyramidManifest } from '../data/grid'
+import { regionFor, regionGrid, type TileId } from '../data/tiles'
 import { computeIsotherms, splitAtGridEdges } from './isotherms'
 import { buildScale, STEP_OPTIONS } from './scale'
 
@@ -130,4 +131,60 @@ describe('sampleAt', () => {
     expect(sampleAt(jan, 37.6, 55.8)).toBeCloseTo(-9.6, 0) // Moscow
     expect(sampleAt(jan, 179.99, 0)).toBeCloseTo(sampleAt(jan, -179.99, 0), 1) // seam is continuous
   })
+})
+
+describe('regional grids (zoomed in)', () => {
+  const eraDir = new URL('../../public/data/era5/', import.meta.url)
+  const pyramid: PyramidManifest = JSON.parse(readFileSync(new URL('manifest.json', eraDir), 'utf8'))
+  const finest = pyramid.levels.length - 1
+  const store = {
+    get: ({ level, row, col }: TileId) => {
+      const path = pyramid.levels[level].tiles!.replace('{row}', String(row)).replace('{col}', String(col))
+      const buf = readFileSync(new URL(path, eraDir))
+      return new Int16Array(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength))
+    },
+  }
+  // Around the Alps, crossing tile borders at 0° and 30°E and 30°N... and the seam in the Pacific.
+  const boxes = {
+    alps: { west: -5.3, east: 34.6, south: 38.2, north: 55.9 },
+    pacific: { west: 165.1, east: 196.8, south: -25.4, north: 12.3 },
+  }
+
+  for (const [name, box] of Object.entries(boxes)) {
+    it(`puts points on the correct side of every isotherm (${name})`, () => {
+      const region = regionFor(pyramid.levels[finest], box)
+      const grid = regionGrid(store, pyramid, finest, region, 0.5)!
+      const { thresholdsC } = buildScale(-40, 40, 'C', 2)
+      const isos = computeIsotherms(grid, thresholdsC)
+      let seed = 3
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647
+      for (let i = 0; i < 300; i++) {
+        const p: [number, number] = [
+          region.west + 0.5 + rnd() * (region.east - region.west - 1),
+          region.south + 0.5 + rnd() * (region.north - region.south - 1),
+        ]
+        const t = sampleAt(grid, p[0], p[1])
+        for (const [k, iso] of isos.entries()) {
+          if (Math.abs(t - thresholdsC[k]) < 0.3) continue // too close to call
+          expect(geoContains(iso.area, p), `${thresholdsC[k]} °C at ${p}`).toBe(t >= thresholdsC[k])
+        }
+      }
+    })
+
+    it(`draws no isotherm along the region's edges (${name})`, () => {
+      const region = regionFor(pyramid.levels[finest], box)
+      const grid = regionGrid(store, pyramid, finest, region, 0.5)!
+      for (const iso of computeIsotherms(grid, buildScale(-40, 40, 'C', 2).thresholdsC)) {
+        for (const line of iso.line.coordinates) {
+          for (let i = 1; i < line.length; i++) {
+            const [a, b] = [line[i - 1], line[i]]
+            const alongEdge =
+              ((a[0] === region.west || a[0] === region.east) && a[0] === b[0]) ||
+              ((a[1] === region.north || a[1] === region.south) && a[1] === b[1])
+            expect(alongEdge).toBe(false)
+          }
+        }
+      }
+    })
+  }
 })

@@ -1,6 +1,6 @@
-import { geoDistance, geoGraticule10, geoOrthographic, geoPath } from 'd3-geo'
-import type { FeatureCollection, MultiLineString } from 'geojson'
-import { useMemo, useRef, useState, type PointerEvent } from 'react'
+import { geoDistance, geoGraticule10, geoPath } from 'd3-geo'
+import type { FeatureCollection, MultiLineString, Polygon } from 'geojson'
+import { useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent, type SetStateAction } from 'react'
 import { feature, mesh } from 'topojson-client'
 import type { GeometryCollection, Topology } from 'topojson-specification'
 import countries110m from 'world-atlas/countries-110m.json'
@@ -8,23 +8,56 @@ import { sampleAt, type Grid } from '../data/grid'
 import type { Isotherm } from '../map/isotherms'
 import { createLabelPlacer } from '../map/labels'
 import { bandFill, FREEZING, formatTemperature, type TemperatureScale } from '../map/scale'
+import { clampZoom, makeProjection, MAX_ZOOM, MIN_ZOOM, SIZE, type View } from '../map/view'
 
-const SIZE = 640
-const PADDING = 8
+type World = Topology<{ countries: GeometryCollection; land: GeometryCollection }>
 
-const world = countries110m as unknown as Topology<{ countries: GeometryCollection; land: GeometryCollection }>
-const land = feature(world, world.objects.land) as FeatureCollection
-const borders = mesh(world, world.objects.countries, (a, b) => a !== b) as MultiLineString
+interface Outlines {
+  land: FeatureCollection
+  borders: MultiLineString
+}
+
+function outlines(world: World): Outlines {
+  return {
+    land: feature(world, world.objects.land) as FeatureCollection,
+    borders: mesh(world, world.objects.countries, (a, b) => a !== b) as MultiLineString,
+  }
+}
+
+/** Coastlines and borders at 1:110m; 1:50m is loaded once the user zooms in. */
+const coarseOutlines = outlines(countries110m as unknown as World)
+const DETAILED_OUTLINES_ZOOM = 3
+let detailedOutlines: Promise<Outlines> | null = null
+function loadDetailedOutlines(): Promise<Outlines> {
+  detailedOutlines ??= import('world-atlas/countries-50m.json').then((m) => outlines(m.default as unknown as World))
+  return detailedOutlines
+}
+
 const graticule = geoGraticule10()
 const sphere = { type: 'Sphere' } as const
 
-interface Props {
+/** Zoom factor per +/− button press. */
+const ZOOM_STEP = 1.5
+
+export interface Layer {
   grid: Grid
   /** isotherms[i] is the contour for scale.thresholds[i]. */
   isotherms: Isotherm[]
+}
+
+interface Props {
+  /**
+   * Whole-globe layer. While the detail layer is shown it covers the screen,
+   * so the globe's isotherms may be left empty then.
+   */
+  globe: Layer
+  /** Detailed layer for what's on screen when zoomed in, if loaded. */
+  detail: Layer | null
   scale: TemperatureScale
   /** Line labels; hidden while the year plays. */
   showLabels: boolean
+  view: View
+  onViewChange: Dispatch<SetStateAction<View>>
 }
 
 interface Hover {
@@ -35,62 +68,125 @@ interface Hover {
   celsius: number
 }
 
-export function Globe({ grid, isotherms, scale, showLabels }: Props) {
-  const [rotation, setRotation] = useState<[number, number]>([-10, -25])
+export function Globe({ globe, detail, scale, showLabels, view, onViewChange }: Props) {
   const [hover, setHover] = useState<Hover | null>(null)
-  const drag = useRef<{ x: number; y: number; rotation: [number, number] } | null>(null)
+  // While dragging or pinching, draw the light outlines to keep frames fast.
+  const [interacting, setInteracting] = useState(false)
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const gesture = useRef<{ view: View; x: number; y: number; distance: number } | null>(null)
   const svgRef = useRef<SVGSVGElement>(null)
 
-  const projection = useMemo(
-    () =>
-      geoOrthographic()
-        .fitExtent([[PADDING, PADDING], [SIZE - PADDING, SIZE - PADDING]], sphere)
-        .rotate(rotation),
-    [rotation],
-  )
+  const projection = useMemo(() => makeProjection(view), [view])
   const path = useMemo(() => geoPath(projection), [projection])
   const freezing = FREEZING[scale.units]
+  const top = detail ?? globe
   const [placeLabels] = useState(createLabelPlacer)
   const labels = useMemo(
-    () => (showLabels ? placeLabels(isotherms, scale.thresholds, freezing, projection) : []),
-    [placeLabels, showLabels, isotherms, scale.thresholds, freezing, projection],
+    () => (showLabels ? placeLabels(top.isotherms, scale.thresholds, freezing, projection) : []),
+    [placeLabels, showLabels, top.isotherms, scale.thresholds, freezing, projection],
+  )
+  const detailBox = useMemo(() => (detail ? boxPolygon(detail.grid) : null), [detail])
+
+  const [fineOutlines, setFineOutlines] = useState<Outlines | null>(null)
+  const wantFine = view.zoom >= DETAILED_OUTLINES_ZOOM
+  useEffect(() => {
+    if (wantFine) loadDetailedOutlines().then(setFineOutlines)
+  }, [wantFine])
+  const { land, borders } = wantFine && fineOutlines && !interacting ? fineOutlines : coarseOutlines
+  // Outlines only change with the view, not the month; detailed ones take ~30 ms to project.
+  const fixedPaths = useMemo(
+    () => ({
+      sphere: path(sphere) ?? '',
+      graticule: path(graticule) ?? '',
+      land: path(land) ?? '',
+      borders: path(borders) ?? '',
+    }),
+    [path, land, borders],
   )
 
-  const toSvg = (e: PointerEvent): [number, number] => {
+  // Wheel zoom. React's onWheel is passive and can't stop the page scrolling.
+  useEffect(() => {
+    const svg = svgRef.current!
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      onViewChange((v) => ({ ...v, zoom: clampZoom(v.zoom * Math.exp(-e.deltaY * 0.002)) }))
+    }
+    svg.addEventListener('wheel', onWheel, { passive: false })
+    return () => svg.removeEventListener('wheel', onWheel)
+  }, [onViewChange])
+
+  const toSvg = (clientX: number, clientY: number): [number, number] => {
     const box = svgRef.current!.getBoundingClientRect()
-    return [((e.clientX - box.left) / box.width) * SIZE, ((e.clientY - box.top) / box.height) * SIZE]
+    return [((clientX - box.left) / box.width) * SIZE, ((clientY - box.top) / box.height) * SIZE]
+  }
+
+  // One pointer drags to rotate; two pointers pinch to zoom.
+  const startGesture = () => {
+    const [a, b] = [...pointers.current.values()]
+    gesture.current = {
+      view,
+      x: a.x,
+      y: a.y,
+      distance: b ? Math.hypot(a.x - b.x, a.y - b.y) : 0,
+    }
   }
 
   const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId)
-    drag.current = { x: e.clientX, y: e.clientY, rotation }
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    startGesture()
+    setInteracting(true)
     setHover(null)
   }
 
   const onPointerMove = (e: PointerEvent<SVGSVGElement>) => {
-    if (drag.current) {
-      // Degrees per pixel so the point under the cursor roughly follows it.
-      const k = 90 / projection.scale()
-      const [lambda, phi] = drag.current.rotation
-      setRotation([
-        lambda + (e.clientX - drag.current.x) * k,
-        Math.max(-90, Math.min(90, phi - (e.clientY - drag.current.y) * k)),
-      ])
+    if (pointers.current.has(e.pointerId)) {
+      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      const g = gesture.current!
+      const [a, b] = [...pointers.current.values()]
+      if (b && g.distance > 0) {
+        onViewChange({ ...g.view, zoom: clampZoom((g.view.zoom * Math.hypot(a.x - b.x, a.y - b.y)) / g.distance) })
+      } else if (!b) {
+        // Degrees per pixel so the point under the cursor roughly follows it.
+        const k = 90 / projection.scale()
+        const [lambda, phi] = g.view.rotation
+        onViewChange({
+          ...g.view,
+          zoom: view.zoom,
+          rotation: [lambda + (a.x - g.x) * k, Math.max(-90, Math.min(90, phi - (a.y - g.y) * k))],
+        })
+      }
       return
     }
-    const [x, y] = toSvg(e)
+
+    const [x, y] = toSvg(e.clientX, e.clientY)
     const lonLat = projection.invert?.([x, y])
-    const center: [number, number] = [-rotation[0], -rotation[1]]
+    const center: [number, number] = [-view.rotation[0], -view.rotation[1]]
     if (!lonLat || geoDistance(lonLat, center) > Math.PI / 2) {
       setHover(null)
       return
     }
+    const grid = detail && inside(detail.grid, lonLat) ? detail.grid : globe.grid
     setHover({ x, y, lon: lonLat[0], lat: lonLat[1], celsius: sampleAt(grid, lonLat[0], lonLat[1]) })
   }
 
-  const onPointerUp = () => {
-    drag.current = null
+  const onPointerUp = (e: PointerEvent<SVGSVGElement>) => {
+    pointers.current.delete(e.pointerId)
+    // Continue with whatever pointers remain, from where the view is now.
+    if (pointers.current.size > 0) startGesture()
+    else setInteracting(false)
   }
+
+  const zoomBy = (factor: number) => onViewChange({ ...view, zoom: clampZoom(view.zoom * factor) })
+
+  const lines = (layer: Layer, prefix: string) =>
+    layer.isotherms.map((iso, i) => (
+      <path
+        key={`${prefix}${i}`}
+        d={path(iso.line) ?? ''}
+        className={scale.thresholds[i] === freezing ? 'isotherm isotherm-freezing' : 'isotherm'}
+      />
+    ))
 
   return (
     <div className="globe">
@@ -98,29 +194,32 @@ export function Globe({ grid, isotherms, scale, showLabels }: Props) {
         ref={svgRef}
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         role="img"
-        aria-label="Globe with isotherms. Drag to rotate."
+        aria-label="Globe with isotherms. Drag to rotate, scroll or pinch to zoom."
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onPointerLeave={() => setHover(null)}
       >
-        {/* Everything colder than the lowest isotherm shows the sphere's own fill. */}
-        <path d={path(sphere) ?? ''} fill={bandFill(scale.bands[0], scale.units)} />
-        {isotherms.map((iso, i) => (
+        {/* Whole globe. Everything colder than the lowest isotherm shows the sphere's own fill. */}
+        <path d={fixedPaths.sphere} fill={bandFill(scale.bands[0], scale.units)} />
+        {globe.isotherms.map((iso, i) => (
           <path key={`band${i}`} d={path(iso.area) ?? ''} fill={bandFill(scale.bands[i + 1], scale.units)} />
         ))}
-        <path d={path(graticule) ?? ''} className="graticule" />
-        <path d={path(land) ?? ''} className="coast" />
-        <path d={path(borders) ?? ''} className="border" />
-        {isotherms.map((iso, i) => (
-          <path
-            key={`line${i}`}
-            d={path(iso.line) ?? ''}
-            className={scale.thresholds[i] === freezing ? 'isotherm isotherm-freezing' : 'isotherm'}
-          />
-        ))}
-        <path d={path(sphere) ?? ''} className="outline" />
+        {detail && detailBox && (
+          <g className="detail">
+            <path d={path(detailBox) ?? ''} fill={bandFill(scale.bands[0], scale.units)} />
+            {detail.isotherms.map((iso, i) => (
+              <path key={`dband${i}`} d={path(iso.area) ?? ''} fill={bandFill(scale.bands[i + 1], scale.units)} />
+            ))}
+          </g>
+        )}
+
+        <path d={fixedPaths.graticule} className="graticule" />
+        <path d={fixedPaths.land} className="coast" />
+        <path d={fixedPaths.borders} className="border" />
+        {lines(top, 'line')}
+        <path d={fixedPaths.sphere} className="outline" />
         <g className="labels" aria-hidden="true">
           {labels.map((l, i) => (
             <text key={i} x={l.x} y={l.y} className={l.freezing ? 'label label-freezing' : 'label'}>
@@ -139,8 +238,41 @@ export function Globe({ grid, isotherms, scale, showLabels }: Props) {
           <span>{formatLonLat(hover.lon, hover.lat)}</span>
         </div>
       )}
+      <div className="zoom-buttons">
+        <button type="button" onClick={() => zoomBy(ZOOM_STEP)} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in">
+          +
+        </button>
+        <button type="button" onClick={() => zoomBy(1 / ZOOM_STEP)} disabled={view.zoom <= MIN_ZOOM} aria-label="Zoom out">
+          −
+        </button>
+      </div>
     </div>
   )
+}
+
+/**
+ * The lon/lat box a regional grid covers, as a polygon with a vertex at every
+ * grid point along its edges: d3-geo draws edges as great circles, and short
+ * edges keep them on the parallels.
+ */
+function boxPolygon(grid: Grid): Polygon {
+  const { lat0, dlat, lon0, dlon } = grid.info
+  const east = lon0 + (grid.width - 1) * dlon
+  const south = lat0 + (grid.height - 1) * dlat
+  const ring: [number, number][] = []
+  // Clockwise, as d3-geo expects for an area smaller than a hemisphere.
+  for (let i = 0; i < grid.width; i++) ring.push([lon0 + i * dlon, lat0])
+  for (let j = 1; j < grid.height; j++) ring.push([east, lat0 + j * dlat])
+  for (let i = grid.width - 2; i >= 0; i--) ring.push([lon0 + i * dlon, south])
+  for (let j = grid.height - 2; j >= 0; j--) ring.push([lon0, lat0 + j * dlat])
+  return { type: 'Polygon', coordinates: [ring] }
+}
+
+function inside(grid: Grid, [lon, lat]: [number, number]): boolean {
+  const { lat0, dlat, lon0, dlon } = grid.info
+  const x = ((((lon - lon0) % 360) + 360) % 360) / dlon
+  const y = (lat - lat0) / dlat
+  return x >= 0 && x <= grid.width - 1 && y >= 0 && y <= grid.height - 1
 }
 
 function formatLonLat(lon: number, lat: number): string {

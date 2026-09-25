@@ -1,4 +1,5 @@
 import type { Units } from './map/scale'
+import type { View } from './map/view'
 
 /**
  * Which folder under public/data/ to read, as produced by
@@ -18,3 +19,14 @@ export const DEFAULT_MONTH = 1
 
 /** Playback speed: a full year takes 12 / this many seconds. */
 export const PLAY_MONTHS_PER_SECOND = 1
+
+/** Where the globe starts: centered on 10°E 25°N, whole globe in view. */
+export const DEFAULT_VIEW: View = { rotation: [-10, -25], zoom: 1 }
+
+/**
+ * Most grid points to contour for the zoomed-in detail layer. The finest
+ * zoom level that fits is used, so frames cost about the same at any zoom.
+ * Smaller while playing, to keep the animation smooth.
+ */
+export const DETAIL_POINTS_STILL = 60_000
+export const DETAIL_POINTS_PLAYING = 15_000

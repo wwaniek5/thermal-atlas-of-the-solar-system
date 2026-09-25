@@ -3,15 +3,22 @@ import { Controls } from './components/Controls'
 import { Globe } from './components/Globe'
 import { Legend } from './components/Legend'
 import { MonthSlider } from './components/MonthSlider'
-import { DATA_SOURCE, DEFAULT_MONTH, DEFAULT_STEP_INDEX, DEFAULT_UNITS, PLAY_MONTHS_PER_SECOND } from './config'
-import { gridAt, loadGlobeLevels, type Grid } from './data/grid'
+import {
+  DATA_SOURCE,
+  DEFAULT_MONTH,
+  DEFAULT_STEP_INDEX,
+  DEFAULT_UNITS,
+  DEFAULT_VIEW,
+  PLAY_MONTHS_PER_SECOND,
+} from './config'
+import { gridAt, loadSource, type LoadedSource } from './data/grid'
+import { useRegion } from './data/useRegion'
 import { computeIsotherms } from './map/isotherms'
 import { buildScale, STEP_OPTIONS, type Units } from './map/scale'
 import { nearestMonthName } from './months'
 
 export default function App() {
-  // Whole-globe grids, coarsest first, each holding the twelve months.
-  const [levels, setLevels] = useState<Grid[][] | null>(null)
+  const [source, setSource] = useState<LoadedSource | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [position, setPosition] = useState(DEFAULT_MONTH - 1)
   const [playing, setPlaying] = useState(false)
@@ -19,11 +26,12 @@ export default function App() {
   // Kept as fine/default/coarse, so switching units keeps the density.
   const [stepIndex, setStepIndex] = useState(DEFAULT_STEP_INDEX)
   const step = STEP_OPTIONS[units][stepIndex]
+  const [view, setView] = useState(DEFAULT_VIEW)
 
   useEffect(() => {
     let cancelled = false
-    loadGlobeLevels(DATA_SOURCE)
-      .then((l) => !cancelled && setLevels(l))
+    loadSource(DATA_SOURCE)
+      .then((s) => !cancelled && setSource(s))
       .catch((e: unknown) => !cancelled && setError(String(e)))
     return () => {
       cancelled = true
@@ -44,8 +52,13 @@ export default function App() {
     return () => cancelAnimationFrame(frame)
   }, [playing])
 
-  // Coarsest level while playing, to keep the animation smooth; finest when still.
-  const year = levels ? (playing ? levels[0] : levels[levels.length - 1]) : null
+  // Zoomed in: detail for what's on screen, from tiles.
+  const region = useRegion(DATA_SOURCE, source?.pyramid ?? null, view, position, playing)
+
+  // Whole globe: the coarsest level while playing or as the background behind
+  // the detail (to keep frames fast), the finest when still.
+  const levels = source?.globe
+  const year = levels ? (playing || region ? levels[0] : levels[levels.length - 1]) : null
 
   // Covers the whole year, so isotherms move rather than appear and vanish.
   const finest = levels?.[levels.length - 1]
@@ -64,7 +77,15 @@ export default function App() {
   const scale = useMemo(() => buildScale(range?.min ?? 0, range?.max ?? 0, units, step), [range, units, step])
 
   const grid = useMemo(() => (year ? gridAt(year, position) : null), [year, position])
-  const isotherms = useMemo(() => (grid ? computeIsotherms(grid, scale.thresholdsC) : []), [grid, scale])
+  // Behind the detail layer the globe's isotherms would never be seen; skip them.
+  const isotherms = useMemo(
+    () => (grid && !region ? computeIsotherms(grid, scale.thresholdsC) : []),
+    [grid, region, scale],
+  )
+  const detail = useMemo(
+    () => (region ? { grid: region, isotherms: computeIsotherms(region, scale.thresholdsC) } : null),
+    [region, scale],
+  )
 
   return (
     <main>
@@ -78,7 +99,14 @@ export default function App() {
       {!grid && !error && <p className="loading">Loading…</p>}
       {grid && (
         <>
-          <Globe grid={grid} isotherms={isotherms} scale={scale} showLabels={!playing} />
+          <Globe
+            globe={{ grid, isotherms }}
+            detail={detail}
+            scale={scale}
+            showLabels={!playing}
+            view={view}
+            onViewChange={setView}
+          />
           <MonthSlider
             position={position}
             playing={playing}
@@ -96,7 +124,7 @@ export default function App() {
             onStepChange={(s) => setStepIndex(STEP_OPTIONS[units].indexOf(s))}
           />
           <p className="source">
-            Data: {grid.info.title}, {grid.info.period} average. {grid.info.credit}. Drag the globe to rotate.
+            Data: {grid.info.title}, {grid.info.period} average. {grid.info.credit}. Drag to rotate, scroll or pinch to zoom.
           </p>
         </>
       )}
