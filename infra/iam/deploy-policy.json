@@ -1,0 +1,57 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ManageProjectBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:PutBucketVersioning",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutEncryptionConfiguration",
+        "s3:PutBucketOwnershipControls",
+        "s3:PutBucketPolicy",
+        "s3:DeleteBucketPolicy",
+        "s3:PutBucketTagging"
+      ],
+      "Resource": [
+        "arn:aws:s3:::isotherms-tfstate-715991412184",
+        "arn:aws:s3:::isotherms-site-715991412184"
+      ]
+    },
+    {
+      "Sid": "TerraformStateAndLock",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::isotherms-tfstate-715991412184/*"
+    },
+    {
+      "Sid": "UploadSite",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::isotherms-site-715991412184/*"
+    },
+    {
+      "Sid": "DeleteSiteBucketOnDestroy",
+      "Effect": "Allow",
+      "Action": "s3:DeleteBucket",
+      "Resource": "arn:aws:s3:::isotherms-site-715991412184"
+    },
+    {
+      "Sid": "ManageCloudFront",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateDistribution",
+        "cloudfront:UpdateDistribution",
+        "cloudfront:DeleteDistribution",
+        "cloudfront:TagResource",
+        "cloudfront:UntagResource",
+        "cloudfront:CreateOriginAccessControl",
+        "cloudfront:UpdateOriginAccessControl",
+        "cloudfront:DeleteOriginAccessControl",
+        "cloudfront:CreateInvalidation"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
