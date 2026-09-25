@@ -13,7 +13,7 @@ import {
 } from './config'
 import { gridAt, loadSource, type LoadedSource } from './data/grid'
 import { useRegion } from './data/useRegion'
-import { computeIsotherms } from './map/isotherms'
+import { useIsotherms } from './map/useIsotherms'
 import { buildScale, STEP_OPTIONS, type Units } from './map/scale'
 import { nearestMonthName } from './months'
 
@@ -77,15 +77,13 @@ export default function App() {
   const scale = useMemo(() => buildScale(range?.min ?? 0, range?.max ?? 0, units, step), [range, units, step])
 
   const grid = useMemo(() => (year ? gridAt(year, position) : null), [year, position])
-  // Behind the detail layer the globe's isotherms would never be seen; skip them.
-  const isotherms = useMemo(
-    () => (grid && !region ? computeIsotherms(grid, scale.thresholdsC) : []),
-    [grid, region, scale],
-  )
-  const detail = useMemo(
-    () => (region ? { grid: region, isotherms: computeIsotherms(region, scale.thresholdsC) } : null),
-    [region, scale],
-  )
+  // Isotherms are computed in background threads, one per layer. The globe
+  // layer keeps being computed while zoomed in (off the main thread, so it's
+  // cheap), so zooming out never shows an empty globe; Globe only draws it
+  // while there is no detail.
+  const globeLayer = useIsotherms(grid, scale.thresholdsC)
+  const detail = useIsotherms(region, scale.thresholdsC)
+  const globe = globeLayer ?? (grid ? { grid, isotherms: [], thresholds: scale.thresholdsC } : null)
 
   return (
     <main>
@@ -96,11 +94,11 @@ export default function App() {
         </p>
       </header>
       {error && <p className="error">Could not load data: {error}</p>}
-      {!grid && !error && <p className="loading">Loading…</p>}
-      {grid && (
+      {!globe && !error && <p className="loading">Loading…</p>}
+      {globe && (
         <>
           <Globe
-            globe={{ grid, isotherms }}
+            globe={globe}
             detail={detail}
             scale={scale}
             showLabels={!playing}
@@ -124,7 +122,7 @@ export default function App() {
             onStepChange={(s) => setStepIndex(STEP_OPTIONS[units].indexOf(s))}
           />
           <p className="source">
-            Data: {grid.info.title}, {grid.info.period} average. {grid.info.credit}. Drag to rotate, scroll or pinch to zoom.
+            Data: {globe.grid.info.title}, {globe.grid.info.period} average. {globe.grid.info.credit}. Drag to rotate, scroll or pinch to zoom.
           </p>
         </>
       )}

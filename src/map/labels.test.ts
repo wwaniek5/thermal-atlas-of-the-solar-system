@@ -56,6 +56,11 @@ describe('placeLabels', () => {
     })
   })
 
+  it('copes with previous labels whose isotherms are not available', () => {
+    const before = placeLabels([parallel(20)], [20], 0, projection)
+    expect(placeLabels([], [20], 0, projection, before)).toEqual([])
+  })
+
   it('places the freezing line first and marks it', () => {
     const labels = placeLabels([parallel(10), parallel(12)], [5, 0], 0, projection, [], { minGap: 1000 })
     expect(labels).toHaveLength(1)

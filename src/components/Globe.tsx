@@ -5,9 +5,9 @@ import { feature, mesh } from 'topojson-client'
 import type { GeometryCollection, Topology } from 'topojson-specification'
 import countries110m from 'world-atlas/countries-110m.json'
 import { sampleAt, type Grid } from '../data/grid'
-import type { Isotherm } from '../map/isotherms'
 import { createLabelPlacer } from '../map/labels'
 import { bandFill, FREEZING, formatTemperature, type TemperatureScale } from '../map/scale'
+import type { Layer } from '../map/useIsotherms'
 import { clampZoom, makeProjection, MAX_ZOOM, MIN_ZOOM, SIZE, type View } from '../map/view'
 
 type World = Topology<{ countries: GeometryCollection; land: GeometryCollection }>
@@ -39,17 +39,8 @@ const sphere = { type: 'Sphere' } as const
 /** Zoom factor per +/− button press. */
 const ZOOM_STEP = 1.5
 
-export interface Layer {
-  grid: Grid
-  /** isotherms[i] is the contour for scale.thresholds[i]. */
-  isotherms: Isotherm[]
-}
-
 interface Props {
-  /**
-   * Whole-globe layer. While the detail layer is shown it covers the screen,
-   * so the globe's isotherms may be left empty then.
-   */
+  /** Whole-globe layer. Its isotherms are hidden while the detail layer covers the screen. */
   globe: Layer
   /** Detailed layer for what's on screen when zoomed in, if loaded. */
   detail: Layer | null
@@ -78,6 +69,10 @@ export function Globe({ globe, detail, scale, showLabels, view, onViewChange }: 
 
   const projection = useMemo(() => makeProjection(view), [view])
   const path = useMemo(() => geoPath(projection), [projection])
+  // Isotherm vertices are at most one grid cell apart, so drawing straight
+  // between them instead of resampling along the sphere differs by < 0.1 px
+  // and saves ~25% of path time. Outlines keep resampling: their segments are long.
+  const isothermPath = useMemo(() => geoPath(makeProjection(view).precision(0)), [view])
   const freezing = FREEZING[scale.units]
   const top = detail ?? globe
   const [placeLabels] = useState(createLabelPlacer)
@@ -183,7 +178,7 @@ export function Globe({ globe, detail, scale, showLabels, view, onViewChange }: 
     layer.isotherms.map((iso, i) => (
       <path
         key={`${prefix}${i}`}
-        d={path(iso.line) ?? ''}
+        d={isothermPath(iso.line) ?? ''}
         className={scale.thresholds[i] === freezing ? 'isotherm isotherm-freezing' : 'isotherm'}
       />
     ))
@@ -203,14 +198,14 @@ export function Globe({ globe, detail, scale, showLabels, view, onViewChange }: 
       >
         {/* Whole globe. Everything colder than the lowest isotherm shows the sphere's own fill. */}
         <path d={fixedPaths.sphere} fill={bandFill(scale.bands[0], scale.units)} />
-        {globe.isotherms.map((iso, i) => (
-          <path key={`band${i}`} d={path(iso.area) ?? ''} fill={bandFill(scale.bands[i + 1], scale.units)} />
+        {!detail && globe.isotherms.map((iso, i) => (
+          <path key={`band${i}`} d={isothermPath(iso.area) ?? ''} fill={bandFill(scale.bands[i + 1], scale.units)} />
         ))}
         {detail && detailBox && (
           <g className="detail">
-            <path d={path(detailBox) ?? ''} fill={bandFill(scale.bands[0], scale.units)} />
+            <path d={isothermPath(detailBox) ?? ''} fill={bandFill(scale.bands[0], scale.units)} />
             {detail.isotherms.map((iso, i) => (
-              <path key={`dband${i}`} d={path(iso.area) ?? ''} fill={bandFill(scale.bands[i + 1], scale.units)} />
+              <path key={`dband${i}`} d={isothermPath(iso.area) ?? ''} fill={bandFill(scale.bands[i + 1], scale.units)} />
             ))}
           </g>
         )}

@@ -77,7 +77,8 @@ export function placeLabels(
   // 1. Keep previous labels, following their isotherm.
   for (const prev of previous) {
     const i = values.indexOf(prev.value)
-    if (i < 0) continue
+    // Its isotherm may be gone, e.g. while new contours are still being computed.
+    if (i < 0 || !isotherms[i]) continue
     const nearest = nearestPoint(isotherms[i], prev.lonLat)
     if (!nearest || nearest.distance > opts.maxFollow || !visible(nearest.lonLat)) continue
     tryPlace(i, nearest.loopIndex, nearest.lonLat)
