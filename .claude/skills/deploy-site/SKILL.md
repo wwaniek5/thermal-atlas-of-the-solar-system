@@ -14,9 +14,10 @@ Get the live URL with `terraform -chdir=infra/site output -raw url`.
 scripts/deploy.sh
 ```
 
-This builds, uploads with cache headers (hashed `assets/` are cached forever,
-data for 1 day, `index.html` is always re-checked), and invalidates CloudFront.
-Afterwards, check the live URL loads with no console errors.
+This builds and uploads with cache headers: `assets/` and the versioned data
+folders (`data/<source>/<hash>/`) are cached forever; `index.html` and the data
+manifests are re-checked on every visit, so no CloudFront invalidation is
+needed. Afterwards, check the live URL loads with no console errors.
 
 ## Change infrastructure
 
@@ -32,4 +33,8 @@ keeps its own state locally and gitignored; don't re-run it.
 
 - Credentials need the actions in `infra/iam/deploy-policy.json` (plus read access).
 - Pushing the ~34 MB of data over HTTPS needs `git config http.postBuffer 157286400`.
-- CloudFront gives 1,000 free invalidation paths per month, and each deploy uses one (`/*`).
+- When changing a file's cache headers or layout, remember that CloudFront (and
+  browsers) keep the old copy for its old max-age. Invalidate the affected paths once
+  (`aws cloudfront create-invalidation --paths ...`) as part of that deploy.
+- Never overwrite a file inside `data/<source>/<hash>/` in place, since it's cached forever.
+  New data must come from `prepare_data.py`, which writes a new hash folder.

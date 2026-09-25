@@ -1,5 +1,5 @@
 import type { Bounds } from '../map/view'
-import { dataUrl, type Grid, type GridInfo, type PyramidLevel, type PyramidManifest } from './grid'
+import { filesUrl, type Grid, type GridInfo, type PyramidLevel, type PyramidManifest } from './grid'
 
 export interface TileId {
   level: number
@@ -45,7 +45,7 @@ export class TileStore {
       this.pending.add(key)
       const level = this.manifest.levels[id.level]
       const path = level.tiles!.replace('{row}', String(id.row)).replace('{col}', String(id.col))
-      fetch(`${dataUrl(this.source)}/${path}`)
+      fetch(`${filesUrl(this.source, this.manifest)}/${path}`)
         .then((res) => {
           if (!res.ok) throw new Error(`${path}: ${res.status} ${res.statusText}`)
           return res.arrayBuffer()

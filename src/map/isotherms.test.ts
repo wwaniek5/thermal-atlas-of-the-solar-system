@@ -11,7 +11,7 @@ const EVERY_5C = buildScale(-75, 40, 'C', 5).thresholdsC
 const dataDir = new URL('../../public/data/noaa/', import.meta.url)
 const manifest: Manifest = JSON.parse(readFileSync(new URL('manifest.json', dataDir), 'utf8'))
 const month = (m: number) =>
-  toGrid(manifest, JSON.parse(readFileSync(new URL(manifest.months[m - 1], dataDir), 'utf8')).values)
+  toGrid(manifest, JSON.parse(readFileSync(new URL(`${manifest.dataDir}/${manifest.months[m - 1]}`, dataDir), 'utf8')).values)
 
 const SPHERE = 4 * Math.PI
 
@@ -140,7 +140,7 @@ describe('regional grids (zoomed in)', () => {
   const store = {
     get: ({ level, row, col }: TileId) => {
       const path = pyramid.levels[level].tiles!.replace('{row}', String(row)).replace('{col}', String(col))
-      const buf = readFileSync(new URL(path, eraDir))
+      const buf = readFileSync(new URL(`${pyramid.dataDir}/${path}`, eraDir))
       return new Int16Array(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength))
     },
   }

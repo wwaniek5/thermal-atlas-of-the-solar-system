@@ -4,7 +4,7 @@ import { regionFor, regionGrid, tilesFor, type TileId } from './tiles'
 
 // A 1° level in 10° tiles (11 points per side, edges shared).
 const manifest: PyramidManifest = {
-  format: 2, source: 't', title: '', period: '', credit: '', units: 'degC', scale: 0.1,
+  format: 2, dataDir: 'v1', source: 't', title: '', period: '', credit: '', units: 'degC', scale: 0.1,
   levels: [{ res: 1, lat0: 90, lon0: -180, nlat: 181, nlon: 360, tileSpan: 10, tilePoints: 11, tileRows: 18, tileCols: 36, tiles: 'L0/{row}_{col}.bin' }],
 }
 

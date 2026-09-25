@@ -4,10 +4,12 @@ The app draws the whole globe from a coarse level and, when zoomed in, loads
 only the finer tiles in view. Layout:
 
     public/data/<source>/manifest.json
-    public/data/<source>/L0.bin              level 0: whole globe, untiled
-    public/data/<source>/L1/<row>_<col>.bin  level 1 tiles
-    public/data/<source>/L2/<row>_<col>.bin  level 2 tiles
+    public/data/<source>/<version>/L0.bin              level 0: whole globe, untiled
+    public/data/<source>/<version>/L1/<row>_<col>.bin  level 1 tiles
+    public/data/<source>/<version>/L2/<row>_<col>.bin  level 2 tiles
     ...
+
+(<version> is a content hash; see publish.py.)
 
 Every .bin file holds all 12 months (so the month animation works at any
 zoom) as little-endian int16 in tenths of a degree Celsius, laid out
@@ -31,6 +33,7 @@ from pathlib import Path
 import numpy as np
 
 from grid import SCALE, ClimateGrid, uniform_poles
+from publish import publish
 
 
 @dataclass(frozen=True)
@@ -97,48 +100,48 @@ def tile(grid: ClimateGrid, span: float, row: int, col: int) -> np.ndarray:
 
 def write_pyramid(grid: ClimateGrid, levels: list[Level], out_root: Path, credit: str) -> Path:
     grid.validate()
-    out_dir = out_root / grid.source
-    out_dir.mkdir(parents=True, exist_ok=True)
 
-    manifest_levels = []
-    for index, level in enumerate(levels):
-        g = coarsen(grid, level.res)
-        g.validate()
-        name = f"L{index}"
-        common = {"res": level.res, "lat0": 90.0, "lon0": -180.0, "nlat": len(g.lats), "nlon": len(g.lons)}
-        if level.tile_span is None:
-            (out_dir / f"{name}.bin").write_bytes(to_int16(g.celsius))
-            manifest_levels.append({**common, "file": f"{name}.bin"})
-            continue
+    def write(folder: Path) -> dict:
+        manifest_levels = []
+        for index, level in enumerate(levels):
+            g = coarsen(grid, level.res)
+            g.validate()
+            name = f"L{index}"
+            common = {"res": level.res, "lat0": 90.0, "lon0": -180.0, "nlat": len(g.lats), "nlon": len(g.lons)}
+            if level.tile_span is None:
+                (folder / f"{name}.bin").write_bytes(to_int16(g.celsius))
+                manifest_levels.append({**common, "file": f"{name}.bin"})
+                continue
 
-        rows = 180 / level.tile_span
-        cols = 360 / level.tile_span
-        assert rows.is_integer() and cols.is_integer(), "tile span must divide 180 and 360"
-        assert (level.tile_span / level.res).is_integer(), "tile span must be a whole number of points"
-        (out_dir / name).mkdir(exist_ok=True)
-        for r in range(int(rows)):
-            for c in range(int(cols)):
-                (out_dir / name / f"{r}_{c}.bin").write_bytes(to_int16(tile(g, level.tile_span, r, c)))
-        manifest_levels.append(
-            {
-                **common,
-                "tileSpan": level.tile_span,
-                "tilePoints": int(level.tile_span / level.res) + 1,
-                "tileRows": int(rows),
-                "tileCols": int(cols),
-                "tiles": f"{name}/{{row}}_{{col}}.bin",
-            }
-        )
+            rows = 180 / level.tile_span
+            cols = 360 / level.tile_span
+            assert rows.is_integer() and cols.is_integer(), "tile span must divide 180 and 360"
+            assert (level.tile_span / level.res).is_integer(), "tile span must be a whole number of points"
+            (folder / name).mkdir(exist_ok=True)
+            for r in range(int(rows)):
+                for c in range(int(cols)):
+                    (folder / name / f"{r}_{c}.bin").write_bytes(to_int16(tile(g, level.tile_span, r, c)))
+            manifest_levels.append(
+                {
+                    **common,
+                    "tileSpan": level.tile_span,
+                    "tilePoints": int(level.tile_span / level.res) + 1,
+                    "tileRows": int(rows),
+                    "tileCols": int(cols),
+                    "tiles": f"{name}/{{row}}_{{col}}.bin",
+                }
+            )
 
-    manifest = {
-        "format": 2,
-        "source": grid.source,
-        "title": grid.title,
-        "period": grid.period,
-        "credit": credit,
-        "units": "degC",
-        "scale": SCALE,
-        "levels": manifest_levels,
-    }
-    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-    return out_dir
+        manifest = {
+            "format": 2,
+            "source": grid.source,
+            "title": grid.title,
+            "period": grid.period,
+            "credit": credit,
+            "units": "degC",
+            "scale": SCALE,
+            "levels": manifest_levels,
+        }
+        return manifest
+
+    return publish(out_root / grid.source, write)

@@ -62,13 +62,27 @@ class TileTest(unittest.TestCase):
                     np.testing.assert_array_equal(a[:, -1, :], south[:, 0, :])
 
 
+class PublishTest(unittest.TestCase):
+    def test_same_data_same_folder_and_old_versions_removed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            first = write_pyramid(synthetic(2.5), [Level(5)], Path(tmp), credit="test")
+            again = write_pyramid(synthetic(2.5), [Level(5)], Path(tmp), credit="test")
+            self.assertEqual(first, again)
+            changed = synthetic(2.5)
+            changed.celsius = changed.celsius + 1
+            new = write_pyramid(changed, [Level(5)], Path(tmp), credit="test")
+            self.assertNotEqual(new, first)
+            self.assertEqual(sorted(p.name for p in (Path(tmp) / "test").iterdir()), sorted([new.name, "manifest.json"]))
+
+
 class WritePyramidTest(unittest.TestCase):
     def test_writes_manifest_and_round_trips_values(self):
         g = synthetic(2.5)
         with tempfile.TemporaryDirectory() as tmp:
             out = write_pyramid(g, [Level(5), Level(2.5, 45)], Path(tmp), credit="test")
-            manifest = json.loads((out / "manifest.json").read_text())
+            manifest = json.loads((Path(tmp) / "test" / "manifest.json").read_text())
             self.assertEqual(manifest["format"], 2)
+            self.assertEqual(out.name, manifest["dataDir"])
             l0, l1 = manifest["levels"]
             self.assertEqual((l0["nlat"], l0["nlon"], l0["file"]), (37, 72, "L0.bin"))
             self.assertEqual((l1["tileRows"], l1["tileCols"], l1["tilePoints"]), (4, 8, 19))

@@ -47,5 +47,6 @@
       "tileCols": 12,
       "tiles": "L3/{row}_{col}.bin"
     }
-  ]
+  ],
+  "dataDir": "7cfca36adb"
 }

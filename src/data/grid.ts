@@ -28,12 +28,16 @@ export interface GridInfo {
 /** Format 1 manifest. */
 export interface Manifest extends GridInfo {
   units: 'degC'
+  /** Folder (next to the manifest) holding the data files; see scripts/data/publish.py. */
+  dataDir: string
   months: string[]
 }
 
 /** Format 2 manifest. */
 export interface PyramidManifest {
   format: 2
+  /** Folder (next to the manifest) holding the data files; see scripts/data/publish.py. */
+  dataDir: string
   source: string
   title: string
   period: string
@@ -82,12 +86,14 @@ export interface LoadedSource {
 
 /** A source's whole-globe grids, plus what's needed to load its zoom tiles. */
 export async function loadSource(source: string): Promise<LoadedSource> {
-  const manifest = await fetchJson<Manifest | PyramidManifest>(`${dataUrl(source)}/manifest.json`)
+  // Always revalidate: the manifest names the current data folder, and a stale
+  // copy in the browser's cache would point at data that no longer exists.
+  const manifest = await fetchJson<Manifest | PyramidManifest>(`${dataUrl(source)}/manifest.json`, { cache: 'no-cache' })
   if ('format' in manifest && manifest.format === 2) {
     const untiled = manifest.levels.flatMap((level, index) => (level.file ? [{ level, index }] : []))
     const globe = await Promise.all(
       untiled.map(async ({ level, index }) => {
-        const res = await fetch(`${dataUrl(source)}/${level.file}`)
+        const res = await fetch(`${filesUrl(source, manifest)}/${level.file}`)
         if (!res.ok) throw new Error(`${level.file}: ${res.status} ${res.statusText}`)
         return pyramidYear(manifest, index, await res.arrayBuffer())
       }),
@@ -97,7 +103,7 @@ export async function loadSource(source: string): Promise<LoadedSource> {
   const v1 = manifest as Manifest
   const year = await Promise.all(
     v1.months.map(async (file) => {
-      const { values } = await fetchJson<{ month: number; values: number[] }>(`${dataUrl(source)}/${file}`)
+      const { values } = await fetchJson<{ month: number; values: number[] }>(`${filesUrl(source, v1)}/${file}`)
       return toGrid(v1, values)
     }),
   )
@@ -177,12 +183,17 @@ export function sampleAt(grid: Grid, lon: number, lat: number): number {
   return top * (1 - fy) + bottom * fy
 }
 
-export function dataUrl(source: string): string {
+/** Where a source's data files live: its current versioned folder. */
+export function filesUrl(source: string, manifest: { dataDir: string }): string {
+  return `${dataUrl(source)}/${manifest.dataDir}`
+}
+
+function dataUrl(source: string): string {
   return `${import.meta.env.BASE_URL}data/${source}`
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url)
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, init)
   if (!res.ok) throw new Error(`${url}: ${res.status} ${res.statusText}`)
   return res.json() as Promise<T>
 }

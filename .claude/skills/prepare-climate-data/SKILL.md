@@ -49,7 +49,13 @@ key: <your token>
 
 ## Output formats
 
-Both share the grid conventions: rows north→south from +90, columns
+Data files go in a versioned folder named after a hash of their contents,
+`public/data/<source>/<hash>/`. `manifest.json` stays at
+`public/data/<source>/` and names that folder in `dataDir`
+(`scripts/data/publish.py`). Regenerating removes the old folder. The site
+caches data folders forever, so never edit files inside one by hand.
+
+Both formats share the grid conventions: rows north→south from +90, columns
 west→east from -180 **without** repeating +180 (the app wraps it), values in
 tenths of °C. Each pole row holds a single value (a pole is one point);
 `ClimateGrid.validate()` enforces this, because isotherms otherwise run into

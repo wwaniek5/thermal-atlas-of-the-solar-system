@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
 # Build the site and upload it to the S3 bucket behind CloudFront.
 # Needs the infrastructure from infra/site (terraform apply) to exist.
+#
+# Caching: build assets and data folders have content hashes in their names,
+# so they are cached forever. index.html and the data manifests (which point
+# at those names) are re-checked on every visit, so no CloudFront
+# invalidation is needed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 bucket=$(terraform -chdir=infra/site output -raw bucket)
-distribution=$(terraform -chdir=infra/site output -raw distribution_id)
 
 npm run build
 
-# Upload order keeps the live site working mid-deploy: new assets first,
-# then data, and index.html (which points at the assets) last.
+forever="public, max-age=31536000, immutable"
 
-# Build assets have content hashes in their names, so they never change.
-aws s3 sync dist/assets "s3://$bucket/assets" --delete \
-  --cache-control "public, max-age=31536000, immutable"
-
-# Data and other files keep their names across deploys: cache for a day;
-# the invalidation below refreshes CloudFront right away.
-aws s3 sync dist "s3://$bucket" --delete --exclude "assets/*" --exclude "index.html" \
+# Upload order keeps the live site working mid-deploy: everything that is
+# referenced first, the files that reference it (manifests, index.html) last.
+aws s3 sync dist/assets "s3://$bucket/assets" --delete --cache-control "$forever"
+aws s3 sync dist/data "s3://$bucket/data" --delete --exclude "*/manifest.json" --cache-control "$forever"
+aws s3 sync dist "s3://$bucket" --delete --exclude "assets/*" --exclude "data/*" --exclude "index.html" \
   --cache-control "public, max-age=86400"
-
+aws s3 cp dist/data "s3://$bucket/data" --recursive --exclude "*" --include "*/manifest.json" \
+  --cache-control "no-cache"
 aws s3 cp dist/index.html "s3://$bucket/index.html" --cache-control "no-cache"
-
-aws cloudfront create-invalidation --distribution-id "$distribution" --paths "/*" >/dev/null
 
 echo "Deployed to $(terraform -chdir=infra/site output -raw url)"

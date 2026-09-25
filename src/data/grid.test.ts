@@ -41,7 +41,7 @@ describe('month labels', () => {
 
 describe('pyramidYear', () => {
   const pyramid: PyramidManifest = {
-    format: 2, source: 'era5', title: 'T', period: 'P', credit: 'C', units: 'degC', scale: 0.1,
+    format: 2, dataDir: 'v1', source: 'era5', title: 'T', period: 'P', credit: 'C', units: 'degC', scale: 0.1,
     levels: [{ res: 90, lat0: 90, lon0: -180, nlat: 3, nlon: 4, file: 'L0.bin' }],
   }
 

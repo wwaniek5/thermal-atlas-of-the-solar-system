@@ -3,10 +3,12 @@
 Every source converter produces a ClimateGrid; `write_grid` turns it into the
 files the web app reads:
 
-    public/data/<source>/manifest.json   grid geometry + metadata
-    public/data/<source>/month-01.json   values for January
+    public/data/<source>/manifest.json             grid geometry + metadata
+    public/data/<source>/<version>/month-01.json   values for January
     ...
-    public/data/<source>/month-12.json
+    public/data/<source>/<version>/month-12.json
+
+(<version> is a content hash; see publish.py.)
 
 Grid conventions (the app relies on these):
     - regular spacing in both directions
@@ -24,6 +26,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+
+from publish import publish
 
 SCALE = 0.1  # stored integer * SCALE = degrees Celsius
 
@@ -95,28 +99,26 @@ def to_lons_from_minus_180(values: np.ndarray, src_lons: np.ndarray) -> tuple[np
 
 def write_grid(grid: ClimateGrid, out_root: Path, credit: str) -> Path:
     grid.validate()
-    out_dir = out_root / grid.source
-    out_dir.mkdir(parents=True, exist_ok=True)
 
-    manifest = {
-        "source": grid.source,
-        "title": grid.title,
-        "period": grid.period,
-        "credit": credit,
-        "units": "degC",
-        "scale": SCALE,
-        "nlat": len(grid.lats),
-        "nlon": len(grid.lons),
-        "lat0": float(grid.lats[0]),
-        "dlat": _step(grid.lats),
-        "lon0": float(grid.lons[0]),
-        "dlon": _step(grid.lons),
-        "months": [f"month-{m:02d}.json" for m in range(1, 13)],
-    }
-    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    def write(folder: Path) -> dict:
+        months = [f"month-{m:02d}.json" for m in range(1, 13)]
+        for m, filename in enumerate(months):
+            ints = np.rint(grid.celsius[m] / SCALE).astype(int).ravel().tolist()
+            (folder / filename).write_text(json.dumps({"month": m + 1, "values": ints}, separators=(",", ":")))
+        return {
+            "source": grid.source,
+            "title": grid.title,
+            "period": grid.period,
+            "credit": credit,
+            "units": "degC",
+            "scale": SCALE,
+            "nlat": len(grid.lats),
+            "nlon": len(grid.lons),
+            "lat0": float(grid.lats[0]),
+            "dlat": _step(grid.lats),
+            "lon0": float(grid.lons[0]),
+            "dlon": _step(grid.lons),
+            "months": months,
+        }
 
-    for m, filename in enumerate(manifest["months"]):
-        ints = np.rint(grid.celsius[m] / SCALE).astype(int).ravel().tolist()
-        (out_dir / filename).write_text(json.dumps({"month": m + 1, "values": ints}, separators=(",", ":")))
-
-    return out_dir
+    return publish(out_root / grid.source, write)
