@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(aws sts get-caller-identity*)",
+      "Bash(aws s3 ls*)",
+      "Bash(aws * describe-*)",
+      "Bash(aws * list-*)",
+      "Bash(aws * get-*)"
+    ],
+    "deny": [
+      "Bash(aws * --profile*)",
+      "Bash(*AWS_PROFILE=*)",
+      "Bash(*AWS_ACCESS_KEY_ID=*)",
+      "Bash(*AWS_SECRET_ACCESS_KEY=*)",
+      "Bash(aws configure*)",
+      "Bash(aws login*)",
+      "Bash(aws logout*)",
+      "Bash(aws sso *)",
+      "Bash(aws sts assume-role*)",
+      "Read(~/.aws/**)",
+      "Edit(~/.aws/**)"
+    ]
+  }
+}
