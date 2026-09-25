@@ -2,3 +2,10 @@
 __pycache__/
 scripts/data/.cache/
 .claude/settings.local.json
+
+# Node / Vite
+node_modules/
+dist/
+*.local
+.DS_Store
+*.log
