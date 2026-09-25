@@ -1,0 +1,51 @@
+{
+  "format": 2,
+  "source": "era5",
+  "title": "ERA5, 2 m air temperature",
+  "period": "1991-2020",
+  "credit": "Contains modified Copernicus Climate Change Service information (ERA5)",
+  "units": "degC",
+  "scale": 0.1,
+  "levels": [
+    {
+      "res": 2.0,
+      "lat0": 90.0,
+      "lon0": -180.0,
+      "nlat": 91,
+      "nlon": 180,
+      "file": "L0.bin"
+    },
+    {
+      "res": 1.0,
+      "lat0": 90.0,
+      "lon0": -180.0,
+      "nlat": 181,
+      "nlon": 360,
+      "file": "L1.bin"
+    },
+    {
+      "res": 0.5,
+      "lat0": 90.0,
+      "lon0": -180.0,
+      "nlat": 361,
+      "nlon": 720,
+      "tileSpan": 60,
+      "tilePoints": 121,
+      "tileRows": 3,
+      "tileCols": 6,
+      "tiles": "L2/{row}_{col}.bin"
+    },
+    {
+      "res": 0.25,
+      "lat0": 90.0,
+      "lon0": -180.0,
+      "nlat": 721,
+      "nlon": 1440,
+      "tileSpan": 30,
+      "tilePoints": 121,
+      "tileRows": 6,
+      "tileCols": 12,
+      "tiles": "L3/{row}_{col}.bin"
+    }
+  ]
+}

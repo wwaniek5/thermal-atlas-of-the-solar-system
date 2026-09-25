@@ -6,7 +6,7 @@ import type { Units } from './map/scale'
  *   'noaa' - NCEP/NCAR Reanalysis 1, ~1.9° (format 1)
  *   'era5' - ERA5, 0.25° resolution pyramid; the globe view uses its 1° level (format 2)
  */
-export const DATA_SOURCE: 'noaa' | 'era5' = 'noaa'
+export const DATA_SOURCE: 'noaa' | 'era5' = 'era5'
 
 export const DEFAULT_UNITS: Units = 'C'
 
