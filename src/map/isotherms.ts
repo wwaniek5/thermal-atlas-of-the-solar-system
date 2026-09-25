@@ -64,7 +64,7 @@ const THRESHOLD_OFFSET = 1e-4
  * exactly -180/+180 and +90/-90 so the globe has no gaps.
  */
 export function gridToLonLat(grid: Grid): (p: Position) => Position {
-  const { lat0, dlat, lon0, dlon } = grid.manifest
+  const { lat0, dlat, lon0, dlon } = grid.info
   return ([x, y]) => {
     const cx = Math.max(0.5, Math.min(grid.width - 0.5, x))
     const cy = Math.max(0.5, Math.min(grid.height - 0.5, y))

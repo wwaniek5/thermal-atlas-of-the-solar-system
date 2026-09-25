@@ -43,6 +43,10 @@ class ClimateGrid:
         assert np.isclose(self.lats[0], 90) and np.isclose(self.lats[-1], -90), "lats must span 90..-90"
         assert np.isclose(self.lons[0], -180), "lons must start at -180"
         assert np.isclose(self.lons[-1] + _step(self.lons), 180), "lons must stop one step before 180"
+        # A pole is one point: its row must hold one value, or isotherms run into it.
+        for row in (0, -1):
+            spread = np.ptp(self.celsius[:, row, :], axis=-1).max()
+            assert spread < 1e-6, f"pole row {row} varies by {spread:.3g} degC"
         _step(self.lats)
         _step(self.lons)
 
@@ -74,6 +78,14 @@ def to_regular_lats(values: np.ndarray, src_lats: np.ndarray, step: float) -> tu
     return target, out
 
 
+def uniform_poles(celsius: np.ndarray) -> np.ndarray:
+    """Set each pole row to its mean: a pole is a single point."""
+    out = celsius.copy()
+    for row in (0, -1):
+        out[:, row, :] = out[:, row, :].mean(axis=-1, keepdims=True)
+    return out
+
+
 def to_lons_from_minus_180(values: np.ndarray, src_lons: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Convert 0..360 longitudes to -180..180 and reorder columns to match."""
     lons = ((src_lons + 180) % 360) - 180
@@ -81,7 +93,7 @@ def to_lons_from_minus_180(values: np.ndarray, src_lons: np.ndarray) -> tuple[np
     return lons[order], values[..., order]
 
 
-def write_grid(grid: ClimateGrid, out_root: Path) -> Path:
+def write_grid(grid: ClimateGrid, out_root: Path, credit: str) -> Path:
     grid.validate()
     out_dir = out_root / grid.source
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -90,6 +102,7 @@ def write_grid(grid: ClimateGrid, out_root: Path) -> Path:
         "source": grid.source,
         "title": grid.title,
         "period": grid.period,
+        "credit": credit,
         "units": "degC",
         "scale": SCALE,
         "nlat": len(grid.lats),

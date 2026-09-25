@@ -1,16 +1,21 @@
 /**
- * Reader for the grid format written by scripts/data/grid.py.
+ * Readers for the data written by scripts/data/.
+ *
+ * Format 1 (grid.py): one JSON file per month. Format 2 (pyramid.py): a
+ * resolution pyramid of int16 binary files, each holding all 12 months; the
+ * whole-globe view uses its untiled levels, the tiled ones are for zooming.
  *
  * Grid conventions: rows north -> south starting at lat0 (90), columns
  * west -> east starting at lon0 (-180) and NOT repeating +180, values in
  * tenths of a degree Celsius, row-major.
  */
 
-export interface Manifest {
+/** What the app needs to know about a grid, whatever format it came from. */
+export interface GridInfo {
   source: string
   title: string
   period: string
-  units: 'degC'
+  credit: string
   scale: number
   nlat: number
   nlon: number
@@ -18,11 +23,44 @@ export interface Manifest {
   dlat: number
   lon0: number
   dlon: number
+}
+
+/** Format 1 manifest. */
+export interface Manifest extends GridInfo {
+  units: 'degC'
   months: string[]
 }
 
+/** Format 2 manifest. */
+export interface PyramidManifest {
+  format: 2
+  source: string
+  title: string
+  period: string
+  credit: string
+  units: 'degC'
+  scale: number
+  levels: PyramidLevel[]
+}
+
+export interface PyramidLevel {
+  res: number
+  lat0: number
+  lon0: number
+  nlat: number
+  nlon: number
+  /** Untiled levels. */
+  file?: string
+  /** Tiled levels (used for zooming). */
+  tileSpan?: number
+  tilePoints?: number
+  tileRows?: number
+  tileCols?: number
+  tiles?: string
+}
+
 export interface Grid {
-  manifest: Manifest
+  info: GridInfo
   /** Width of `values`: nlon + 1, because column 0 is repeated at the end
    * (lon +180) so contours close across the antimeridian. */
   width: number
@@ -31,19 +69,54 @@ export interface Grid {
   values: Float32Array
 }
 
-export async function loadManifest(source: string): Promise<Manifest> {
-  return fetchJson<Manifest>(`${dataUrl(source)}/manifest.json`)
+/**
+ * A source's whole-globe grids, coarsest first; each entry is the twelve
+ * months, January first. Format 1 sources have a single entry.
+ */
+export async function loadGlobeLevels(source: string): Promise<Grid[][]> {
+  const manifest = await fetchJson<Manifest | PyramidManifest>(`${dataUrl(source)}/manifest.json`)
+  if ('format' in manifest && manifest.format === 2) {
+    const untiled = manifest.levels.flatMap((level, index) => (level.file ? [{ level, index }] : []))
+    return Promise.all(
+      untiled.map(async ({ level, index }) => {
+        const res = await fetch(`${dataUrl(source)}/${level.file}`)
+        if (!res.ok) throw new Error(`${level.file}: ${res.status} ${res.statusText}`)
+        return pyramidYear(manifest, index, await res.arrayBuffer())
+      }),
+    )
+  }
+  const v1 = manifest as Manifest
+  const year = await Promise.all(
+    v1.months.map(async (file) => {
+      const { values } = await fetchJson<{ month: number; values: number[] }>(`${dataUrl(source)}/${file}`)
+      return toGrid(v1, values)
+    }),
+  )
+  return [year]
 }
 
-export async function loadMonth(manifest: Manifest, month: number): Promise<Grid> {
-  const file = manifest.months[month - 1]
-  const { values } = await fetchJson<{ month: number; values: number[] }>(`${dataUrl(manifest.source)}/${file}`)
-  return toGrid(manifest, values)
-}
-
-/** All twelve months, January first. */
-export async function loadYear(manifest: Manifest): Promise<Grid[]> {
-  return Promise.all(manifest.months.map((_, i) => loadMonth(manifest, i + 1)))
+/** Split an untiled format 2 level (int16, [month][row][col]) into 12 grids. */
+export function pyramidYear(manifest: PyramidManifest, levelIndex: number, buffer: ArrayBuffer): Grid[] {
+  const level = manifest.levels[levelIndex]
+  const info: GridInfo = {
+    source: manifest.source,
+    title: manifest.title,
+    period: manifest.period,
+    credit: manifest.credit,
+    scale: manifest.scale,
+    nlat: level.nlat,
+    nlon: level.nlon,
+    lat0: level.lat0,
+    dlat: -level.res,
+    lon0: level.lon0,
+    dlon: level.res,
+  }
+  const perMonth = level.nlat * level.nlon
+  const ints = new Int16Array(buffer)
+  if (ints.length !== 12 * perMonth) {
+    throw new Error(`${manifest.source} level ${levelIndex}: expected ${12 * perMonth} values, got ${ints.length}`)
+  }
+  return Array.from({ length: 12 }, (_, m) => toGrid(info, ints.subarray(m * perMonth, (m + 1) * perMonth)))
 }
 
 /**
@@ -65,8 +138,8 @@ export function gridAt(year: Grid[], position: number): Grid {
   return { ...a, values }
 }
 
-export function toGrid(manifest: Manifest, raw: ArrayLike<number>): Grid {
-  const { nlat, nlon, scale } = manifest
+export function toGrid(info: GridInfo, raw: ArrayLike<number>): Grid {
+  const { nlat, nlon, scale } = info
   if (raw.length !== nlat * nlon) {
     throw new Error(`expected ${nlat * nlon} values, got ${raw.length}`)
   }
@@ -77,12 +150,12 @@ export function toGrid(manifest: Manifest, raw: ArrayLike<number>): Grid {
       values[r * width + c] = raw[r * nlon + (c % nlon)] * scale
     }
   }
-  return { manifest, width, height: nlat, values }
+  return { info, width, height: nlat, values }
 }
 
 /** Bilinear temperature at a lon/lat, in degrees Celsius. */
 export function sampleAt(grid: Grid, lon: number, lat: number): number {
-  const { lat0, dlat, lon0, dlon } = grid.manifest
+  const { lat0, dlat, lon0, dlon } = grid.info
   const x = clamp((((lon - lon0) % 360) + 360) % 360 / dlon, 0, grid.width - 1)
   const y = clamp((lat - lat0) / dlat, 0, grid.height - 1)
   const x0 = Math.min(Math.floor(x), grid.width - 2)

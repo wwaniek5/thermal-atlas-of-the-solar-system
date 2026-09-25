@@ -4,13 +4,14 @@ import { Globe } from './components/Globe'
 import { Legend } from './components/Legend'
 import { MonthSlider } from './components/MonthSlider'
 import { DATA_SOURCE, DEFAULT_MONTH, DEFAULT_STEP_INDEX, DEFAULT_UNITS, PLAY_MONTHS_PER_SECOND } from './config'
-import { gridAt, loadManifest, loadYear, type Grid } from './data/grid'
+import { gridAt, loadGlobeLevels, type Grid } from './data/grid'
 import { computeIsotherms } from './map/isotherms'
 import { buildScale, STEP_OPTIONS, type Units } from './map/scale'
 import { nearestMonthName } from './months'
 
 export default function App() {
-  const [year, setYear] = useState<Grid[] | null>(null)
+  // Whole-globe grids, coarsest first, each holding the twelve months.
+  const [levels, setLevels] = useState<Grid[][] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [position, setPosition] = useState(DEFAULT_MONTH - 1)
   const [playing, setPlaying] = useState(false)
@@ -21,9 +22,8 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false
-    loadManifest(DATA_SOURCE)
-      .then(loadYear)
-      .then((y) => !cancelled && setYear(y))
+    loadGlobeLevels(DATA_SOURCE)
+      .then((l) => !cancelled && setLevels(l))
       .catch((e: unknown) => !cancelled && setError(String(e)))
     return () => {
       cancelled = true
@@ -44,19 +44,23 @@ export default function App() {
     return () => cancelAnimationFrame(frame)
   }, [playing])
 
+  // Coarsest level while playing, to keep the animation smooth; finest when still.
+  const year = levels ? (playing ? levels[0] : levels[levels.length - 1]) : null
+
   // Covers the whole year, so isotherms move rather than appear and vanish.
+  const finest = levels?.[levels.length - 1]
   const range = useMemo(() => {
-    if (!year) return null
+    if (!finest) return null
     let min = Infinity
     let max = -Infinity
-    for (const grid of year) {
+    for (const grid of finest) {
       for (const v of grid.values) {
         if (v < min) min = v
         if (v > max) max = v
       }
     }
     return { min, max }
-  }, [year])
+  }, [finest])
   const scale = useMemo(() => buildScale(range?.min ?? 0, range?.max ?? 0, units, step), [range, units, step])
 
   const grid = useMemo(() => (year ? gridAt(year, position) : null), [year, position])
@@ -92,7 +96,7 @@ export default function App() {
             onStepChange={(s) => setStepIndex(STEP_OPTIONS[units].indexOf(s))}
           />
           <p className="source">
-            Data: {grid.manifest.title}, {grid.manifest.period} average (NOAA PSL). Drag the globe to rotate.
+            Data: {grid.info.title}, {grid.info.period} average. {grid.info.credit}. Drag the globe to rotate.
           </p>
         </>
       )}

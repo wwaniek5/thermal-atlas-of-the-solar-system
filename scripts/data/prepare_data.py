@@ -2,6 +2,7 @@
 
 Usage (from the repo root):
     .venv/bin/python scripts/data/prepare_data.py noaa
+    .venv/bin/python scripts/data/prepare_data.py era5   # needs ~/.cdsapirc
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ import argparse
 from pathlib import Path
 
 from grid import write_grid
+from pyramid import write_pyramid
 from sources import SOURCES
 
 REPO = Path(__file__).resolve().parents[2]
@@ -22,11 +24,16 @@ def main() -> None:
     parser.add_argument("source", choices=sorted(SOURCES))
     args = parser.parse_args()
 
-    grid = SOURCES[args.source](CACHE_DIR)
-    out_dir = write_grid(grid, OUT_ROOT)
+    source = SOURCES[args.source]
+    grid = source.load(CACHE_DIR)
+    if source.levels:
+        out_dir = write_pyramid(grid, source.levels, OUT_ROOT, source.credit)
+    else:
+        out_dir = write_grid(grid, OUT_ROOT, source.credit)
 
     c = grid.celsius
-    print(f"Wrote {out_dir.relative_to(REPO)}: {len(grid.lats)} x {len(grid.lons)} grid, 12 months")
+    size = sum(f.stat().st_size for f in out_dir.rglob("*") if f.is_file())
+    print(f"Wrote {out_dir.relative_to(REPO)}: {len(grid.lats)} x {len(grid.lons)} grid, 12 months, {size / 1e6:.1f} MB")
     print(f"  range {c.min():.1f} .. {c.max():.1f} degC")
 
 

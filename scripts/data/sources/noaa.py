@@ -15,6 +15,7 @@ from grid import ClimateGrid, to_lons_from_minus_180, to_regular_lats
 from sources.download import download
 
 URL = "https://downloads.psl.noaa.gov/Datasets/ncep.reanalysis.derived/surface_gauss/air.2m.mon.ltm.1991-2020.nc"
+CREDIT = "NOAA PSL, Boulder, Colorado, USA"
 LAT_STEP = 1.875  # match the native longitude spacing
 
 

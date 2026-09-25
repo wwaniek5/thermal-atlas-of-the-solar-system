@@ -1,8 +1,12 @@
 import type { Units } from './map/scale'
 
-/** Which folder under public/data/ to read. Each source is produced by
- * scripts/data/prepare_data.py and shares the same format. */
-export const DATA_SOURCE = 'noaa'
+/**
+ * Which folder under public/data/ to read, as produced by
+ * scripts/data/prepare_data.py:
+ *   'noaa' - NCEP/NCAR Reanalysis 1, ~1.9° (format 1)
+ *   'era5' - ERA5, 0.25° resolution pyramid; the globe view uses its 1° level (format 2)
+ */
+export const DATA_SOURCE: 'noaa' | 'era5' = 'noaa'
 
 export const DEFAULT_UNITS: Units = 'C'
 

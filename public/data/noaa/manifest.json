@@ -2,6 +2,7 @@
   "source": "noaa",
   "title": "NCEP/NCAR Reanalysis 1, 2 m air temperature",
   "period": "1991-2020",
+  "credit": "NOAA PSL, Boulder, Colorado, USA",
   "units": "degC",
   "scale": 0.1,
   "nlat": 97,
