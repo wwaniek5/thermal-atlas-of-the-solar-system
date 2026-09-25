@@ -167,3 +167,76 @@ h1 {
   color: var(--ink-muted);
   font-size: 0.7rem;
 }
+
+/* Month slider */
+
+.month-slider {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.play {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.play:hover {
+  border-color: var(--ink-muted);
+}
+
+.play:focus-visible {
+  outline: 2px solid #2a78d6;
+  outline-offset: 2px;
+}
+
+.play svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.track {
+  flex: 1;
+  min-width: 0;
+  /* Half a thumb of inset so tick labels line up with the thumb's center. */
+  padding: 0 8px;
+}
+
+.track input {
+  display: block;
+  width: calc(100% + 16px);
+  margin: 10px -8px 0;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+.ticks {
+  position: relative;
+  height: 1.2em;
+  margin-top: 4px;
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+}
+
+.ticks span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+/* On narrow screens, label every other month. */
+@media (max-width: 480px) {
+  .ticks span:nth-child(even) {
+    visibility: hidden;
+  }
+}

@@ -7,3 +7,6 @@ export const DEFAULT_STEP_C = 5
 
 /** 1 = January ... 12 = December. */
 export const DEFAULT_MONTH = 1
+
+/** Playback speed: a full year takes 12 / this many seconds. */
+export const PLAY_MONTHS_PER_SECOND = 1

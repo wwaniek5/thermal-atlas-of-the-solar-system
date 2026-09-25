@@ -41,6 +41,30 @@ export async function loadMonth(manifest: Manifest, month: number): Promise<Grid
   return toGrid(manifest, values)
 }
 
+/** All twelve months, January first. */
+export async function loadYear(manifest: Manifest): Promise<Grid[]> {
+  return Promise.all(manifest.months.map((_, i) => loadMonth(manifest, i + 1)))
+}
+
+/**
+ * The grid at a point in the year. `position` runs from 0 (January) up to
+ * 12, wrapping, so 11.5 is halfway from December to January. Temperatures
+ * are blended linearly between the two neighbouring months.
+ */
+export function gridAt(year: Grid[], position: number): Grid {
+  const p = ((position % 12) + 12) % 12
+  const i = Math.floor(p)
+  const t = p - i
+  const a = year[i]
+  if (t === 0) return a
+  const b = year[(i + 1) % 12]
+  const values = new Float32Array(a.values.length)
+  for (let k = 0; k < values.length; k++) {
+    values[k] = a.values[k] + (b.values[k] - a.values[k]) * t
+  }
+  return { ...a, values }
+}
+
 export function toGrid(manifest: Manifest, raw: ArrayLike<number>): Grid {
   const { nlat, nlon, scale } = manifest
   if (raw.length !== nlat * nlon) {
