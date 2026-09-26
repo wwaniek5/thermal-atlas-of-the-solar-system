@@ -1,0 +1,18 @@
+{
+  "source": "uranus",
+  "title": "Uranus temperature at 100 mbar (Voyager 2/IRIS)",
+  "period": "January 1986",
+  "credit": "Voyager 2/IRIS temperatures retrieved by Fletcher et al. (2018)",
+  "units": "degC",
+  "scale": 0.1,
+  "nlat": 181,
+  "nlon": 360,
+  "lat0": 90.0,
+  "dlat": -1.0,
+  "lon0": -180.0,
+  "dlon": 1.0,
+  "months": [
+    "step-01.json"
+  ],
+  "dataDir": "c6b7e35bd5"
+}

@@ -13,7 +13,7 @@ from typing import Callable
 
 from grid import ClimateGrid
 from pyramid import Level
-from sources import era5, jupiter, mars, mercury, moon, noaa, saturn, venus
+from sources import era5, jupiter, mars, mercury, moon, noaa, saturn, uranus, venus
 
 
 @dataclass(frozen=True)
@@ -35,4 +35,5 @@ SOURCES = {
     "venus": Source(venus.load, levels=venus.LEVELS, credit=venus.CREDIT, even_poles=True),
     "jupiter": Source(jupiter.load, credit=jupiter.CREDIT),
     "saturn": Source(saturn.load, credit=saturn.CREDIT),
+    "uranus": Source(uranus.load, credit=uranus.CREDIT),
 }

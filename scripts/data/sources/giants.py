@@ -29,6 +29,8 @@ from pathlib import Path
 
 import numpy as np
 
+from sources.download import download
+
 H = 6.62607e-34  # Planck constant, J s
 C = 2.99792e8  # speed of light, m/s
 K = 1.380649e-23  # Boltzmann constant, J/K
@@ -158,3 +160,24 @@ def zonal_grid(lats_deg: np.ndarray, kelvin: np.ndarray, step: float) -> np.ndar
     lats = np.linspace(90, -90, int(180 / step) + 1)
     profile = np.interp(lats, lats_deg[order], kelvin[order])
     return np.repeat(profile[:, None], int(360 / step), axis=1)
+
+
+VOYAGER_URL = "https://raw.githubusercontent.com/leighfletcher/Voyager/master"
+
+
+def voyager_profile(cache_dir: Path, planet: str, prefix: str, pressure_bar: float) -> tuple[np.ndarray, np.ndarray]:
+    """Voyager/IRIS temperatures retrieved by L. N. Fletcher (github.com/leighfletcher/Voyager).
+
+    Returns (planetographic latitudes, kelvin) at `pressure_bar`, interpolated
+    in log pressure. The CSVs are temperature (pressure x latitude), pressure
+    in atm (about bar) and planetographic latitude.
+    """
+    def fetch(name: str) -> np.ndarray:
+        path = download(f"{VOYAGER_URL}/{planet}/{prefix}_{name}.csv", cache_dir / "voyager" / f"{prefix}_{name}.csv")
+        return np.loadtxt(path, delimiter=",")
+
+    lats, pressures, kelvin = fetch("lat").ravel(), fetch("press").ravel(), fetch("temp")
+    log_p = np.log(pressures)
+    order = np.argsort(log_p)  # np.interp needs increasing x
+    profile = np.array([np.interp(np.log(pressure_bar), log_p[order], kelvin[order, j]) for j in range(len(lats))])
+    return lats, profile

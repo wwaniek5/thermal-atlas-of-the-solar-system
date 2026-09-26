@@ -228,7 +228,29 @@ export const BODIES: Body[] = [
       'Day and night make no difference: a day is under 11 hours, and this air takes years to warm up or cool down. Cassini\'s measurements were averaged around each latitude, so the map shows bands only, without storms or the hexagon at the north pole.',
     ],
   },
-  { id: 'uranus', name: 'Uranus' },
+  {
+    id: 'uranus',
+    name: 'Uranus',
+    source: 'uranus',
+    quantity: 'Temperature at 100 mbar (Voyager 2)',
+    staticTitle: 'January 1986',
+    // Level with the equator: the warm equator and both warm poles.
+    view: { rotation: [0, 0], zoom: 1 },
+    // About −222.2 to −219.4 °C (51-54 K): the whole range is under 3 °C.
+    stepOptions: { C: [0.5, 1, 2], F: [1, 2, 5] },
+    stepIndex: 0,
+    colors: [-222.2, -221.2, -219.4],
+    features: [
+      { name: 'North pole', lonLat: [0, 90], symbol: 'pole' },
+      { name: 'South pole', lonLat: [0, -90], symbol: 'pole-south' },
+    ],
+    // Checked against the data: equator 53.4 K, 30° 51.2 K, 70° 52.4 K.
+    about: [
+      'Uranus has no surface. This is the temperature near the top of its lower atmosphere, where the pressure is a tenth of Earth\'s, measured by Voyager 2 when it flew past in January 1986. It is the coldest planet: about −221 °C here.',
+      'Uranus is tipped on its side (98°), so each pole gets about 42 years of sunlight and then 42 years of darkness. In 1986 the south pole pointed almost at the Sun. Yet the temperatures have barely changed: telescope images from 2018, in northern spring, match Voyager\'s to within 0.3 °C at most latitudes.',
+      'The equator is about 2 °C warmer than the mid-latitudes, and the poles about 1 °C. Air is thought to rise and cool at mid-latitudes and to sink and warm over the equator and poles. Voyager\'s measurements were averaged around each latitude, so the map shows bands only.',
+    ],
+  },
   { id: 'neptune', name: 'Neptune' },
 ]
 
