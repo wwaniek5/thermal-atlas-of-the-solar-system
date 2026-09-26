@@ -124,9 +124,11 @@ export function regionGrid(
     tiles.set(id.row * cols + id.col, tile)
   }
 
-  const p = ((position % 12) + 12) % 12
-  const m0 = Math.floor(p)
-  const m1 = (m0 + 1) % 12
+  // Spread the file's steps over the 0..12 position, as gridAt does.
+  const steps = manifest.steps ?? 12
+  const p = ((((position % 12) + 12) % 12) / 12) * steps
+  const m0 = Math.floor(p) % steps
+  const m1 = (m0 + 1) % steps
   const t = p - m0
   const perMonth = n * n
 

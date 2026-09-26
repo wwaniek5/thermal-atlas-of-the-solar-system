@@ -2,7 +2,7 @@
  * Readers for the data written by scripts/data/.
  *
  * Format 1 (grid.py): one JSON file per month. Format 2 (pyramid.py): a
- * resolution pyramid of int16 binary files, each holding all 12 months; the
+ * resolution pyramid of int16 binary files, each holding every step (12 months unless `steps` says otherwise); the
  * whole-globe view uses its untiled levels, the tiled ones are for zooming.
  *
  * Grid conventions: rows north -> south starting at lat0 (90), columns
@@ -38,6 +38,8 @@ export interface Manifest extends GridInfo {
 /** Format 2 manifest. */
 export interface PyramidManifest {
   format: 2
+  /** Steps through the cycle in every file; 12 (months) if absent. */
+  steps?: number
   /** Folder (next to the manifest) holding the data files; see scripts/data/publish.py. */
   dataDir: string
   source: string
@@ -119,7 +121,7 @@ export async function loadSource(source: string): Promise<LoadedSource> {
   return { globe: [year], pyramid: null, terrain }
 }
 
-/** Split an untiled format 2 level (int16, [month][row][col]) into 12 grids. */
+/** Split an untiled format 2 level (int16, [step][row][col]) into one grid per step. */
 export function pyramidYear(manifest: PyramidManifest, levelIndex: number, buffer: ArrayBuffer): Grid[] {
   const level = manifest.levels[levelIndex]
   const info: GridInfo = {
@@ -137,10 +139,11 @@ export function pyramidYear(manifest: PyramidManifest, levelIndex: number, buffe
   }
   const perMonth = level.nlat * level.nlon
   const ints = new Int16Array(buffer)
-  if (ints.length !== 12 * perMonth) {
-    throw new Error(`${manifest.source} level ${levelIndex}: expected ${12 * perMonth} values, got ${ints.length}`)
+  const steps = manifest.steps ?? 12
+  if (ints.length !== steps * perMonth) {
+    throw new Error(`${manifest.source} level ${levelIndex}: expected ${steps * perMonth} values, got ${ints.length}`)
   }
-  return Array.from({ length: 12 }, (_, m) => toGrid(info, ints.subarray(m * perMonth, (m + 1) * perMonth)))
+  return Array.from({ length: steps }, (_, m) => toGrid(info, ints.subarray(m * perMonth, (m + 1) * perMonth)))
 }
 
 /**

@@ -1,7 +1,7 @@
 import { geoDistance, geoOrthographic } from 'd3-geo'
 import { describe, expect, it } from 'vitest'
 import type { Isotherm } from './isotherms'
-import { placeLabels } from './labels'
+import { createLabelPlacer, placeLabels } from './labels'
 
 /** An isotherm along a circle of latitude. */
 function parallel(lat: number): Isotherm {
@@ -59,6 +59,20 @@ describe('placeLabels', () => {
   it('copes with previous labels whose isotherms are not available', () => {
     const before = placeLabels([parallel(20)], [20], 0, projection)
     expect(placeLabels([], [20], 0, projection, before)).toEqual([])
+  })
+
+  it('moves the last labels with the view without re-placing them', () => {
+    const placer = createLabelPlacer()
+    const view = (lon: number) => geoOrthographic().fitExtent([[0, 0], [640, 640]], { type: 'Sphere' }).rotate([lon, 0])
+    const placed = placer.place([parallel(0), parallel(30)], [25, 15], 0, view(0))
+    const moved = placer.move(view(-5))
+    expect(moved.length).toBeGreaterThan(0)
+    for (const l of moved) {
+      const same = placed.find((p) => p.lonLat === l.lonLat)!
+      const [x, y] = view(-5)(l.lonLat)!
+      expect([l.x, l.y]).toEqual([x, y]) // same spot on the planet, new screen position
+      expect(same.text).toBe(l.text)
+    }
   })
 
   it('places the freezing line first and marks it', () => {

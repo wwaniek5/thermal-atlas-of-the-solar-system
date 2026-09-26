@@ -11,9 +11,10 @@ only the finer tiles in view. Layout:
 
 (<version> is a content hash; see publish.py.)
 
-Every .bin file holds all 12 months (so the month animation works at any
-zoom) as little-endian int16 in tenths of a degree Celsius, laid out
-[month][row][col], rows north -> south, columns west -> east.
+Every .bin file holds all the steps through the cycle (`steps` in the
+manifest: 12 months, or 1 for a body that doesn't change), so animation works
+at any zoom, as little-endian int16 in tenths of a degree Celsius, laid out
+[step][row][col], rows north -> south, columns west -> east.
 
 - An untiled level follows the format 1 grid conventions (see grid.py):
   rows 90 -> -90, columns -180 -> <180 without repeating +180.
@@ -82,6 +83,31 @@ def coarsen(grid: ClimateGrid, res: float) -> ClimateGrid:
     )
 
 
+def even_out_poles(grid: ClimateGrid) -> ClimateGrid:
+    """Give every row about the same real-world resolution.
+
+    Longitude columns crowd together towards the poles (at 88°, 30 times
+    closer than at the equator), so rows there show far finer noise than the
+    rest of the map, and the contours between that ring and the single pole
+    value form a star of spokes. Averaging each row along longitude over
+    about one equatorial cell's distance (1 / cos(latitude) columns) evens
+    this out; at the pole it is the whole-ring mean, as before.
+    """
+    celsius = grid.celsius.copy()
+    nlon = len(grid.lons)
+    for row, lat in enumerate(grid.lats):
+        cos_lat = np.cos(np.radians(lat))
+        width = nlon if cos_lat < 1e-9 else min(nlon, int(round(1 / cos_lat)))
+        if width <= 1:
+            continue
+        # Periodic moving average of `width` columns, centred.
+        values = celsius[:, row, :]
+        padded = np.concatenate([values[:, -(width // 2) :], values, values[:, : width - width // 2]], axis=-1)
+        cumsum = np.cumsum(np.pad(padded, ((0, 0), (1, 0))), axis=-1)
+        celsius[:, row, :] = (cumsum[:, width:] - cumsum[:, :-width])[:, :nlon] / width
+    return ClimateGrid(grid.source, grid.title, grid.period, grid.lats, grid.lons, uniform_poles(celsius), grid.terrain)
+
+
 def to_int16(celsius: np.ndarray) -> bytes:
     ints = np.rint(celsius / SCALE)
     assert np.abs(ints).max() < 2**15, "temperature out of int16 range"
@@ -98,13 +124,17 @@ def tile(grid: ClimateGrid, span: float, row: int, col: int) -> np.ndarray:
     return grid.celsius[:, r0 : r0 + n][:, :, cols]
 
 
-def write_pyramid(grid: ClimateGrid, levels: list[Level], out_root: Path, credit: str) -> Path:
+def write_pyramid(
+    grid: ClimateGrid, levels: list[Level], out_root: Path, credit: str, even_poles: bool = False
+) -> Path:
     grid.validate()
 
     def write(folder: Path) -> dict:
         manifest_levels = []
         for index, level in enumerate(levels):
             g = coarsen(grid, level.res)
+            if even_poles:
+                g = even_out_poles(g)
             g.validate()
             name = f"L{index}"
             common = {"res": level.res, "lat0": 90.0, "lon0": -180.0, "nlat": len(g.lats), "nlon": len(g.lons)}
@@ -134,6 +164,7 @@ def write_pyramid(grid: ClimateGrid, levels: list[Level], out_root: Path, credit
 
         manifest = {
             "format": 2,
+            "steps": len(grid.celsius),
             "source": grid.source,
             "title": grid.title,
             "period": grid.period,

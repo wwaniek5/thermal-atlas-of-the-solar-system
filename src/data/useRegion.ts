@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useReducer } from 'react'
-import { DETAIL_POINTS_PLAYING, DETAIL_POINTS_STILL } from '../config'
 import { makeProjection, pickLevel, visibleBounds, type View } from '../map/view'
 import type { Grid, PyramidManifest } from './grid'
 import { regionFor, regionGrid, TileStore, tilesFor } from './tiles'
@@ -14,7 +13,8 @@ export function useRegion(
   pyramid: PyramidManifest | null,
   view: View,
   position: number,
-  playing: boolean,
+  /** Most grid points to contour for what's on screen (see DETAIL_POINTS_* in config). */
+  budget: number,
 ): Grid | null {
   // Bumped as tiles arrive, so the region is rebuilt with them.
   const [tilesLoaded, onTileLoad] = useReducer((n: number) => n + 1, 0)
@@ -24,10 +24,10 @@ export function useRegion(
     if (!pyramid) return null
     const bounds = visibleBounds(makeProjection(view))
     if (!bounds) return null
-    const level = pickLevel(pyramid.levels, bounds, playing ? DETAIL_POINTS_PLAYING : DETAIL_POINTS_STILL)
+    const level = pickLevel(pyramid.levels, bounds, budget)
     if (level === null) return null
     return { level, region: regionFor(pyramid.levels[level], bounds) }
-  }, [pyramid, view, playing])
+  }, [pyramid, view, budget])
 
   useEffect(() => {
     if (store && pyramid && target) store.request(tilesFor(pyramid, target.level, target.region))

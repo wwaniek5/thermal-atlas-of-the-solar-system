@@ -54,6 +54,7 @@ key: <your token>
 | `era5` | ERA5 monthly means, 2 m air temp, 1991-2020        | 0.25° regular       | 2      |
 | `mars` | NASA Ames FV3 Mars GCM, surface temp, 12 Mars months (30° of Ls) + terrain | 2° regular | 1 |
 | `mercury` | Thermal model computed here (sunlight + regolith heat conduction), 72 steps through one solar day | 2° regular | 1 |
+| `venus` | Magellan topography (USGS, 65 MB GeoTIFF) turned into temperature with the VIRA profile; 1 step (static) | 0.125° base; 2° globe + 1°-0.125° tiles | 2 |
 
 ## Output formats
 
@@ -84,7 +85,8 @@ any number of steps over the same slider) holding
   includes both edges, so neighbours share their edge rows and columns.
 
 ERA5 levels: 2° and 1° untiled, 0.5° in 60° tiles, 0.25° in 30° tiles
-(about 0.4 + 1.6 + 6.3 + 25 MB).
+(about 0.4 + 1.6 + 6.3 + 25 MB). The manifest's `steps` says how many steps each file holds
+(12 if absent; Venus has 1).
 
 Change a format only in `grid.py` / `pyramid.py`, and update the app's reader
 (`src/data/grid.ts`) to match.

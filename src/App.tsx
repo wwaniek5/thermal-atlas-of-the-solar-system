@@ -11,6 +11,8 @@ import {
   DEFAULT_STEP_INDEX,
   DEFAULT_UNITS,
   DEFAULT_VIEW,
+  DETAIL_POINTS_PLAYING,
+  DETAIL_POINTS_STILL,
   PLAY_MONTHS_PER_SECOND,
 } from './config'
 import { gridAt, loadSource, type Grid, type LoadedSource } from './data/grid'
@@ -76,7 +78,8 @@ export default function App() {
   }, [playing])
 
   // Zoomed in: detail for what's on screen, from tiles.
-  const region = useRegion(dataSource, source?.pyramid ?? null, view, position, playing)
+  const budget = (playing ? DETAIL_POINTS_PLAYING : DETAIL_POINTS_STILL) * (body.detailScale ?? 1)
+  const region = useRegion(dataSource, source?.pyramid ?? null, view, position, budget)
 
   // Whole globe: the coarsest level while playing or as the background behind
   // the detail (to keep frames fast), the finest when still.
@@ -119,7 +122,7 @@ export default function App() {
       <main>
         <header>
           <p className="eyebrow">{body.name}</p>
-          <h1>{calendar.title(position)}</h1>
+          <h1>{body.staticTitle ?? calendar.title(position)}</h1>
           <p className="subtitle">
             {body.quantity}, isotherms every {step}&nbsp;°{units}
           </p>
@@ -139,7 +142,8 @@ export default function App() {
               onViewChange={setView}
             />
             <div className="panel">
-              {body.orbitDiagram ? (
+              {/* Bodies whose temperatures don't change get no time control. */}
+              {body.staticTitle ? null : body.orbitDiagram ? (
                 // Mercury: the orbit diagram is the time control.
                 <MercuryOrbit
                   position={position}

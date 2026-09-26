@@ -40,6 +40,14 @@ export interface Body {
   orbitDiagram?: boolean
   /** A few short paragraphs explaining what the map shows. */
   about?: string[]
+  /** Temperatures don't change over time: no slider or playback, and this heading. */
+  staticTitle?: string
+  /**
+   * Scales the zoom detail budget (grid points contoured for what's on
+   * screen). Below 1 for noisy data, whose isotherms have many more points
+   * per grid point.
+   */
+  detailScale?: number
 }
 
 /** In order from the Sun. */
@@ -71,7 +79,33 @@ export const BODIES: Body[] = [
       { name: '0°', lonLat: [0, 0], symbol: 'marker' },
     ],
   },
-  { id: 'venus', name: 'Venus' },
+  {
+    id: 'venus',
+    name: 'Venus',
+    source: 'venus',
+    quantity: 'Surface temperature (from altitude)',
+    staticTitle: 'Always about the same',
+    // Ishtar Terra with Maxwell Montes, and Aphrodite Terra.
+    view: { rotation: [-45, -30], zoom: 1 },
+    // Radar relief is noisy: about 4x the isotherm points per grid point of
+    // Earth's temperatures, so contour a quarter as many grid points.
+    detailScale: 0.25,
+    // Coldest on Maxwell Montes (~386 °C), average 463 °C, lowest plains ~483 °C.
+    colors: [385, 463, 485],
+    features: [
+      { name: 'Maxwell Montes', lonLat: [3.3, 65.2] },
+      { name: 'Ishtar Terra', lonLat: [27.5, 70.4] },
+      { name: 'Aphrodite Terra', lonLat: [104.8, -5.8] },
+      { name: 'Beta Regio', lonLat: [-77.2, 25.3] },
+      { name: 'Atla Regio', lonLat: [-160.4, 9.2] },
+      { name: 'Atalanta Planitia', lonLat: [165.8, 45.8] },
+    ],
+    // Checked against the data: mean 463 °C, coldest on Maxwell Montes.
+    about: [
+      'Venus has a thick carbon dioxide atmosphere, about 92 times the pressure on Earth. It spreads heat so well that day and night, equator and poles are all at nearly the same temperature, and there are almost no seasons.',
+      'What changes the temperature is height: it drops about 8 °C for every kilometre up, like on Earth\'s mountains. So the isotherms trace the relief: from about 480 °C in the lowest plains to about 385 °C on top of Maxwell Montes, 11 km high.',
+    ],
+  },
   {
     id: 'earth',
     name: 'Earth',

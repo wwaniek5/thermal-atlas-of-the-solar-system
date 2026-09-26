@@ -27,7 +27,7 @@ def main() -> None:
     source = SOURCES[args.source]
     grid = source.load(CACHE_DIR)
     if source.levels:
-        out_dir = write_pyramid(grid, source.levels, OUT_ROOT, source.credit)
+        out_dir = write_pyramid(grid, source.levels, OUT_ROOT, source.credit, source.even_poles)
     else:
         out_dir = write_grid(grid, OUT_ROOT, source.credit)
 

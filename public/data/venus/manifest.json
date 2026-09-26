@@ -1,0 +1,69 @@
+{
+  "format": 2,
+  "steps": 1,
+  "source": "venus",
+  "title": "Venus surface temperature (from Magellan topography and VIRA)",
+  "period": "nearly constant",
+  "credit": "Magellan topography (USGS Astrogeology) with the VIRA temperature profile (Seiff et al. 1985)",
+  "units": "degC",
+  "scale": 0.1,
+  "levels": [
+    {
+      "res": 2.0,
+      "lat0": 90.0,
+      "lon0": -180.0,
+      "nlat": 91,
+      "nlon": 180,
+      "file": "L0.bin"
+    },
+    {
+      "res": 1.0,
+      "lat0": 90.0,
+      "lon0": -180.0,
+      "nlat": 181,
+      "nlon": 360,
+      "tileSpan": 60,
+      "tilePoints": 61,
+      "tileRows": 3,
+      "tileCols": 6,
+      "tiles": "L1/{row}_{col}.bin"
+    },
+    {
+      "res": 0.5,
+      "lat0": 90.0,
+      "lon0": -180.0,
+      "nlat": 361,
+      "nlon": 720,
+      "tileSpan": 30,
+      "tilePoints": 61,
+      "tileRows": 6,
+      "tileCols": 12,
+      "tiles": "L2/{row}_{col}.bin"
+    },
+    {
+      "res": 0.25,
+      "lat0": 90.0,
+      "lon0": -180.0,
+      "nlat": 721,
+      "nlon": 1440,
+      "tileSpan": 30,
+      "tilePoints": 121,
+      "tileRows": 6,
+      "tileCols": 12,
+      "tiles": "L3/{row}_{col}.bin"
+    },
+    {
+      "res": 0.125,
+      "lat0": 90.0,
+      "lon0": -180.0,
+      "nlat": 1441,
+      "nlon": 2880,
+      "tileSpan": 15,
+      "tilePoints": 121,
+      "tileRows": 12,
+      "tileCols": 24,
+      "tiles": "L4/{row}_{col}.bin"
+    }
+  ],
+  "dataDir": "fb30cc7d4d"
+}

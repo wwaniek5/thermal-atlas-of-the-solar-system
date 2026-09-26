@@ -13,7 +13,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from grid import SCALE, ClimateGrid, uniform_poles  # noqa: E402
-from pyramid import Level, coarsen, tile, write_pyramid  # noqa: E402
+from pyramid import Level, coarsen, even_out_poles, tile, write_pyramid  # noqa: E402
 
 
 def synthetic(res: float) -> ClimateGrid:
@@ -45,6 +45,26 @@ class CoarsenTest(unittest.TestCase):
     def test_rejects_non_multiples(self):
         with self.assertRaises(ValueError):
             coarsen(synthetic(2.5), 4)
+
+
+class EvenOutPolesTest(unittest.TestCase):
+    def test_smooths_near_poles_and_leaves_the_equator(self):
+        g = synthetic(2.5)
+        rng = np.random.default_rng(0)
+        # Pure noise on a flat field: any variation left along a row is noise.
+        flat = np.zeros_like(g.celsius) + rng.normal(0, 3, g.celsius.shape)
+        noisy = ClimateGrid(g.source, g.title, g.period, g.lats, g.lons, uniform_poles(flat))
+        even = even_out_poles(noisy)
+        equator = len(g.lats) // 2
+        near_pole = 1  # 87.5°
+        np.testing.assert_allclose(even.celsius[:, equator], noisy.celsius[:, equator])  # 1 column: unchanged
+        self.assertLess(even.celsius[:, near_pole].std(axis=-1).mean(), noisy.celsius[:, near_pole].std(axis=-1).mean() / 3)
+        even.validate()
+
+    def test_keeps_the_ring_average(self):
+        g = synthetic(2.5)
+        even = even_out_poles(g)
+        np.testing.assert_allclose(even.celsius.mean(axis=-1), g.celsius.mean(axis=-1), atol=1e-9)
 
 
 class TileTest(unittest.TestCase):

@@ -102,19 +102,46 @@ export function placeLabels(
  */
 export function createLabelPlacer() {
   let last: Label[] = []
-  return (isotherms: Isotherm[], values: number[], freezing: number, projection: GeoProjection): Label[] =>
-    (last = placeLabels(isotherms, values, freezing, projection, last))
+  return {
+    place: (isotherms: Isotherm[], values: number[], freezing: number, projection: GeoProjection): Label[] =>
+      (last = placeLabels(isotherms, values, freezing, projection, last)),
+    /**
+     * The last labels moved to a new view without re-placing them: cheap
+     * enough for every frame of a drag. Labels turning away are hidden.
+     */
+    move: (projection: GeoProjection): Label[] => {
+      const [lambda, phi] = projection.rotate()
+      const center: [number, number] = [-lambda, -phi]
+      return last.flatMap((l) => {
+        if (geoDistance(l.lonLat, center) > MAX_ANGLE_FROM_CENTER) return []
+        const xy = projection(l.lonLat)
+        return xy ? [{ ...l, x: xy[0], y: xy[1] }] : []
+      })
+    },
+  }
 }
 
 function nearestPoint(iso: Isotherm, target: [number, number]) {
-  let best: { lonLat: [number, number]; loopIndex: number; distance: number } | null = null
+  // Search with a cheap flat distance (longitude scaled by latitude); only a
+  // label that already sits on its line matters, so small errors far away don't.
+  const cosLat = Math.cos((target[1] * Math.PI) / 180)
+  let best: { lonLat: [number, number]; loopIndex: number } | null = null
+  let bestScore = Infinity
   iso.line.coordinates.forEach((loop, loopIndex) => {
     for (const p of loop as [number, number][]) {
-      const distance = geoDistance(p, target)
-      if (!best || distance < best.distance) best = { lonLat: p, loopIndex, distance }
+      let dLon = Math.abs(p[0] - target[0])
+      if (dLon > 180) dLon = 360 - dLon
+      const dLat = p[1] - target[1]
+      const score = dLat * dLat + dLon * dLon * cosLat * cosLat
+      if (score < bestScore) {
+        bestScore = score
+        best = { lonLat: p, loopIndex }
+      }
     }
   })
-  return best as { lonLat: [number, number]; loopIndex: number; distance: number } | null
+  if (!best) return null
+  const found = best as { lonLat: [number, number]; loopIndex: number }
+  return { ...found, distance: geoDistance(found.lonLat, target) }
 }
 
 function formatValue(v: number): string {

@@ -88,10 +88,16 @@ export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewC
   const isothermPath = useMemo(() => geoPath(makeProjection(view).precision(0)), [view])
   const freezing = FREEZING[scale.units]
   const top = detail ?? globe
-  const [placeLabels] = useState(createLabelPlacer)
+  const [labelPlacer] = useState(createLabelPlacer)
   const labels = useMemo(
-    () => (showLabels ? placeLabels(top.isotherms, scale.thresholds, freezing, projection) : []),
-    [placeLabels, showLabels, top.isotherms, scale.thresholds, freezing, projection],
+    () =>
+      !showLabels
+        ? []
+        : // Placing labels scans every isotherm point; while dragging, just move the last ones.
+          interacting
+          ? labelPlacer.move(projection)
+          : labelPlacer.place(top.isotherms, scale.thresholds, freezing, projection),
+    [labelPlacer, showLabels, interacting, top.isotherms, scale.thresholds, freezing, projection],
   )
   const detailBox = useMemo(() => (detail ? boxPolygon(detail.grid) : null), [detail])
 

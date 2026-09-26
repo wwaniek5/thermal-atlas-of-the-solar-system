@@ -40,8 +40,9 @@ class ClimateGrid:
     period: str  # e.g. "1991-2020"
     lats: np.ndarray  # shape (nlat,), 90 -> -90, evenly spaced
     lons: np.ndarray  # shape (nlon,), -180 -> <180, evenly spaced
-    # shape (steps, nlat, nlon): 12 months, or more steps through the cycle
-    # for bodies that change fast (Mercury's solar day has 72).
+    # shape (steps, nlat, nlon): 12 months, more steps through the cycle for
+    # bodies that change fast (Mercury's solar day has 72), or 1 for a body
+    # that doesn't change (Venus).
     celsius: np.ndarray
     # Optional surface elevation in metres on the same grid (nlat, nlon), for
     # drawing terrain outlines on bodies without coastlines.
@@ -49,7 +50,7 @@ class ClimateGrid:
 
     def validate(self) -> None:
         assert self.celsius.shape[1:] == (len(self.lats), len(self.lons)), self.celsius.shape
-        assert len(self.celsius) >= 12, "need at least 12 steps through the cycle"
+        assert len(self.celsius) >= 1, "need at least one step"
         assert np.isfinite(self.celsius).all(), "grid contains missing values"
         assert np.isclose(self.lats[0], 90) and np.isclose(self.lats[-1], -90), "lats must span 90..-90"
         assert np.isclose(self.lons[0], -180), "lons must start at -180"
