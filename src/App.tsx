@@ -107,7 +107,8 @@ export default function App() {
     [range, units, step, body.colors],
   )
 
-  const grid = useMemo(() => (year ? gridAt(year, position) : null), [year, position])
+  const cyclic = calendar.cyclic ?? true
+  const grid = useMemo(() => (year ? gridAt(year, position, cyclic) : null), [year, position, cyclic])
   // Isotherms are computed in background threads, one per layer. The globe
   // layer keeps being computed while zoomed in (off the main thread, so it's
   // cheap), so zooming out never shows an empty globe; Globe only draws it

@@ -10,7 +10,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from sources.giants import brightness_temperature, fill_gaps, to_app_grid  # noqa: E402
+from sources.giants import brightness_temperature, fill_gaps, planetographic_to_centric, to_app_grid  # noqa: E402
 
 
 def planck(kelvin: float, wavelength_um: float) -> float:
@@ -61,6 +61,16 @@ class ToAppGridTest(unittest.TestCase):
         self.assertAlmostEqual(out[1, 2], (3 + 0 + 13 + 10) / 4)
         # And at lon 90, between cells 0 and 1.
         self.assertAlmostEqual(out[1, 3], (0 + 1 + 10 + 11) / 4)
+
+
+class LatitudeTest(unittest.TestCase):
+    def test_keeps_poles_and_equator(self) -> None:
+        # float32 input, as in IDL files: tan(90°) used to overflow and flip the pole's sign.
+        lats = np.array([90, 45, 0, -45, -90], dtype=">f4")
+        out = planetographic_to_centric(lats, 0.9)
+        np.testing.assert_allclose(out[[0, 2, 4]], [90, 0, -90], atol=1e-9)
+        self.assertLess(out[1], 45)  # an oblate planet's centric latitude is closer to the equator
+        self.assertAlmostEqual(out[3], -out[1])
 
 
 if __name__ == "__main__":

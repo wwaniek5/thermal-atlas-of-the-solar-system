@@ -203,7 +203,31 @@ export const BODIES: Body[] = [
       'There are almost no seasons (the axis is tilted only 3°), and Jupiter\'s own inner heat evens out the temperature, so the equator is barely warmer than the mid-latitudes. The polar regions are colder. The telescope can\'t see well beyond about 78°, so there the map just continues the last measured values.',
     ],
   },
-  { id: 'saturn', name: 'Saturn' },
+  {
+    id: 'saturn',
+    name: 'Saturn',
+    source: 'saturn',
+    quantity: 'Temperature at 100 mbar (Cassini spacecraft)',
+    calendar: 'saturn',
+    startPosition: 0,
+    // Level with the equator: both poles on the rim, for the pole-to-pole seasonal swing.
+    view: { rotation: [0, 0], zoom: 1 },
+    // About −194 to −173 °C (79-100 K).
+    stepOptions: { C: [1, 2, 5], F: [2, 5, 10] },
+    stepIndex: 0,
+    colors: [-194, -185, -173],
+    features: [
+      { name: 'North pole', lonLat: [0, 90], symbol: 'pole' },
+      { name: 'South pole', lonLat: [0, -90], symbol: 'pole-south' },
+    ],
+    // Checked against the data: south pole 100 K in 2007, 94 K in mid-2011
+    // (north 87 K); north pole 94 K and south 84 K in 2017.
+    about: [
+      'Saturn has no surface. This is the temperature near the top of its lower atmosphere, where the pressure is a tenth of Earth\'s, measured by the Cassini spacecraft from orbit.',
+      'Saturn is tilted 27°, a bit more than Earth, but its year lasts 29.5 Earth years, so each season lasts about 7. In 2007 it was late summer in the south, and the south pole was the warmest place. After the equinox in August 2009 the north slowly warmed and the south cooled. The temperatures lag behind the Sun: two years after the equinox the south was still warmer. By 2017, close to northern midsummer, the warm pole was in the north.',
+      'Day and night make no difference: a day is under 11 hours, and this air takes years to warm up or cool down. Cassini\'s measurements were averaged around each latitude, so the map shows bands only, without storms or the hexagon at the north pole.',
+    ],
+  },
   { id: 'uranus', name: 'Uranus' },
   { id: 'neptune', name: 'Neptune' },
 ]

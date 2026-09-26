@@ -1,5 +1,6 @@
 import { orbitLabel } from './mercury'
 import { phaseLabel } from './moon'
+import { FIRST_YEAR, LAST_YEAR, saturnLabel } from './saturn'
 
 export const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -23,10 +24,14 @@ export function describePosition(position: number): string {
 export interface Calendar {
   /** Heading for a slider position, e.g. "January". */
   title: (position: number) => string
-  /** Tick labels under the slider: 12 steps plus the wrap-around back to the start. */
+  /** Tick labels under the slider, evenly spaced from its start to its end (the wrap-around back to the start, if cyclic). */
   ticks: string[]
   /** For screen readers, e.g. "Between January and February". */
   describe: (position: number) => string
+  /** False for a stretch of time with a start and an end: the last step doesn't blend back into the first. */
+  cyclic?: boolean
+  /** The slider's name for screen readers; "Month" if unset. */
+  label?: string
 }
 
 const EARTH: Calendar = {
@@ -71,10 +76,20 @@ const MOON: Calendar = {
   describe: phaseLabel,
 }
 
+/** Saturn: 2007-2017 as seen by Cassini, from the end of northern winter to late northern spring. */
+const SATURN: Calendar = {
+  title: saturnLabel,
+  ticks: Array.from({ length: LAST_YEAR - FIRST_YEAR + 1 }, (_, i) => String(FIRST_YEAR + i)),
+  describe: saturnLabel,
+  cyclic: false,
+  label: 'Date',
+}
+
 export const CALENDARS = {
   earth: EARTH,
   mars: MARS,
   mercury: MERCURY_ORBIT,
   moon: MOON,
+  saturn: SATURN,
 } satisfies Record<string, Calendar>
 export type CalendarId = keyof typeof CALENDARS

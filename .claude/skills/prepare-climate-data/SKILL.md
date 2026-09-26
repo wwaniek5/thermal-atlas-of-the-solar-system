@@ -57,6 +57,7 @@ key: <your token>
 | `moon` | Thermal model computed here (same engine as Mercury, `sources/thermal.py`), 72 steps through one lunar day | 2° regular | 1 |
 | `venus` | Magellan topography (USGS, 65 MB GeoTIFF) turned into temperature with the VIRA profile; 1 step (static) | 0.125° base; 2° globe + 1°-0.125° tiles | 2 |
 | `jupiter` | VLT/VISIR 18.7 µm frames (Zenodo 8401816, 52 files, ~20 MB) limb-corrected and median-combined with `sources/giants.py` (shared by the gas giants); 1 step (static) | 1° regular | 1 |
+| `saturn` | Cassini/CIRS reconstructed temperatures (Fletcher et al. 2018, GitHub leighfletcher/CassiniCIRS, 43 MB IDL .sav, needs `scipy`) at 100 mbar; zonal; 41 quarterly steps 2007-2017, not cyclic | 2° regular | 1 |
 
 ## Output formats
 

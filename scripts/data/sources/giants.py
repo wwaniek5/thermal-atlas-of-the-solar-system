@@ -143,3 +143,18 @@ def to_app_grid(cells: np.ndarray, step: float) -> np.ndarray:
     points = 0.5 * (rows + np.roll(rows, 1, axis=1))  # point at lon j*step, between cells j-1 and j
     # Reorder columns from 0..360 to -180..180.
     return np.roll(points, nx // 2, axis=1)
+
+
+def planetographic_to_centric(lat_deg: np.ndarray, polar_to_equatorial: float) -> np.ndarray:
+    """Planetocentric latitude (from the centre) of a planetographic one (from the local vertical)."""
+    lat = np.radians(np.asarray(lat_deg, dtype=np.float64))
+    # arctan2 keeps the poles exact (tan(90°) overflows and can flip sign).
+    return np.degrees(np.arctan2(np.sin(lat) * polar_to_equatorial**2, np.cos(lat)))
+
+
+def zonal_grid(lats_deg: np.ndarray, kelvin: np.ndarray, step: float) -> np.ndarray:
+    """A (lat) profile, any latitude order, onto the app's grid (lats 90..-90, lons -180..180-step)."""
+    order = np.argsort(lats_deg)
+    lats = np.linspace(90, -90, int(180 / step) + 1)
+    profile = np.interp(lats, lats_deg[order], kelvin[order])
+    return np.repeat(profile[:, None], int(360 / step), axis=1)

@@ -16,6 +16,6 @@ describe('routes', () => {
   it('names no body for the root, unknown paths, or bodies without data yet', () => {
     expect(bodyFromPath('/')).toBeNull()
     expect(bodyFromPath('/pluto')).toBeNull()
-    expect(bodyFromPath('/saturn')).toBeNull()
+    expect(bodyFromPath('/uranus')).toBeNull()
   })
 })

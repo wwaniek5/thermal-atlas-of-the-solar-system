@@ -153,9 +153,11 @@ export function pyramidYear(manifest: PyramidManifest, levelIndex: number, buffe
  * bodies that change fast (Mercury has 72). Temperatures are blended
  * linearly between the two neighbouring steps.
  */
-export function gridAt(year: Grid[], position: number): Grid {
+export function gridAt(year: Grid[], position: number, cyclic = true): Grid {
   const n = year.length
-  const p = ((((position % 12) + 12) % 12) / 12) * n
+  // Cyclic: 0..12 covers all n steps and 12 is the first again. Otherwise
+  // 0 is the first step and 12 the last.
+  const p = cyclic ? ((((position % 12) + 12) % 12) / 12) * n : (Math.min(12, Math.max(0, position)) / 12) * (n - 1)
   const i = Math.floor(p) % n
   const t = p - Math.floor(p)
   const a = year[i]

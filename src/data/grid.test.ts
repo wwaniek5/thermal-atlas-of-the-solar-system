@@ -39,6 +39,21 @@ describe('gridAt with more than 12 steps', () => {
   })
 })
 
+describe('gridAt, not cyclic', () => {
+  // 5 steps: step k is k degrees everywhere.
+  const steps = Array.from({ length: 5 }, (_, k) => toGrid(manifest, [k, k]))
+
+  it('runs from the first step at 0 to the last at 12', () => {
+    expect(gridAt(steps, 0, false)).toBe(steps[0])
+    expect(gridAt(steps, 12, false)).toBe(steps[4])
+    expect(gridAt(steps, 6, false)).toBe(steps[2])
+  })
+
+  it('never blends the last step back into the first', () => {
+    expect(gridAt(steps, 11.9, false).values[0]).toBeCloseTo(3.9667, 3)
+  })
+})
+
 describe('month labels', () => {
   it('names the nearest month', () => {
     expect(nearestMonthName(0.4)).toBe('January')

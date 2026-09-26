@@ -2,7 +2,7 @@ import type { Calendar } from '../months'
 import { PlayButton } from './PlayButton'
 
 interface Props {
-  /** 0 = first month ... 12 = first month again; fractions blend between months. */
+  /** 0 = first month ... 12 = first month again (or the last step, if not cyclic); fractions blend between steps. */
   position: number
   calendar: Calendar
   playing: boolean
@@ -22,7 +22,7 @@ export function MonthSlider({ position, calendar, playing, onChange, onTogglePla
           step={0.01}
           value={position}
           onChange={(e) => onChange(Number(e.target.value))}
-          aria-label="Month"
+          aria-label={calendar.label ?? 'Month'}
           aria-valuetext={calendar.describe(position)}
         />
         <div
@@ -30,7 +30,7 @@ export function MonthSlider({ position, calendar, playing, onChange, onTogglePla
           aria-hidden="true"
         >
           {calendar.ticks.map((tick, i) => (
-            <span key={i} style={{ left: `${(i / 12) * 100}%` }}>
+            <span key={i} style={{ left: `${(i / (calendar.ticks.length - 1)) * 100}%` }}>
               {tick}
             </span>
           ))}
