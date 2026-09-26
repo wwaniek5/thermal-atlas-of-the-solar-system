@@ -65,6 +65,23 @@ resource "aws_cloudfront_origin_access_control" "site" {
   signing_protocol                  = "sigv4"
 }
 
+# Page routes like /earth aren't files in the bucket: serve the app for any
+# path without a file extension. Missing files (data, assets) still get a
+# real error instead of the app's HTML.
+resource "aws_cloudfront_function" "routes" {
+  name    = "isotherms-routes"
+  runtime = "cloudfront-js-2.0"
+  publish = true
+  code    = <<-EOT
+    function handler(event) {
+      var request = event.request;
+      var last = request.uri.split('/').pop();
+      if (last.indexOf('.') === -1) request.uri = '/index.html';
+      return request;
+    }
+  EOT
+}
+
 # AWS-managed cache policy that honours the Cache-Control headers
 # deploy.sh sets, and compresses with gzip/brotli.
 data "aws_cloudfront_cache_policy" "optimized" {
@@ -92,6 +109,11 @@ resource "aws_cloudfront_distribution" "site" {
     cached_methods         = ["GET", "HEAD"]
     cache_policy_id        = data.aws_cloudfront_cache_policy.optimized.id
     compress               = true
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.routes.arn
+    }
   }
 
   restrictions {

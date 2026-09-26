@@ -49,7 +49,11 @@
         "cloudfront:CreateOriginAccessControl",
         "cloudfront:UpdateOriginAccessControl",
         "cloudfront:DeleteOriginAccessControl",
-        "cloudfront:CreateInvalidation"
+        "cloudfront:CreateInvalidation",
+        "cloudfront:CreateFunction",
+        "cloudfront:UpdateFunction",
+        "cloudfront:PublishFunction",
+        "cloudfront:DeleteFunction"
       ],
       "Resource": "*"
     }

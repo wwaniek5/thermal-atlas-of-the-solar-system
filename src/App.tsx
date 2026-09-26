@@ -3,8 +3,9 @@ import { Controls } from './components/Controls'
 import { Globe } from './components/Globe'
 import { Legend } from './components/Legend'
 import { MonthSlider } from './components/MonthSlider'
+import { BODIES } from './bodies'
+import { BodyMenu } from './components/BodyMenu'
 import {
-  DATA_SOURCE,
   DEFAULT_MONTH,
   DEFAULT_STEP_INDEX,
   DEFAULT_UNITS,
@@ -16,6 +17,7 @@ import { useRegion } from './data/useRegion'
 import { useIsotherms } from './map/useIsotherms'
 import { buildScale, STEP_OPTIONS, type Units } from './map/scale'
 import { nearestMonthName } from './months'
+import { useBodyRoute } from './routing'
 
 export default function App() {
   const [source, setSource] = useState<LoadedSource | null>(null)
@@ -27,16 +29,25 @@ export default function App() {
   const [stepIndex, setStepIndex] = useState(DEFAULT_STEP_INDEX)
   const step = STEP_OPTIONS[units][stepIndex]
   const [view, setView] = useState(DEFAULT_VIEW)
+  // Each body has its own page (/earth, ...); switching starts it afresh.
+  const [bodyId, navigate] = useBodyRoute(() => {
+    setSource(null)
+    setError(null)
+    setPlaying(false)
+    setView(DEFAULT_VIEW)
+  })
+  const body = BODIES.find((b) => b.id === bodyId)!
+  const dataSource = body.source!
 
   useEffect(() => {
     let cancelled = false
-    loadSource(DATA_SOURCE)
+    loadSource(dataSource)
       .then((s) => !cancelled && setSource(s))
       .catch((e: unknown) => !cancelled && setError(String(e)))
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [dataSource])
 
   useEffect(() => {
     if (!playing) return
@@ -53,7 +64,7 @@ export default function App() {
   }, [playing])
 
   // Zoomed in: detail for what's on screen, from tiles.
-  const region = useRegion(DATA_SOURCE, source?.pyramid ?? null, view, position, playing)
+  const region = useRegion(dataSource, source?.pyramid ?? null, view, position, playing)
 
   // Whole globe: the coarsest level while playing or as the background behind
   // the detail (to keep frames fast), the finest when still.
@@ -86,46 +97,50 @@ export default function App() {
   const globe = globeLayer ?? (grid ? { grid, isotherms: [], thresholds: scale.thresholdsC } : null)
 
   return (
-    <main>
-      <header>
-        <h1>{nearestMonthName(position)}</h1>
-        <p className="subtitle">
-          Average surface air temperature, isotherms every {step} °{units}
-        </p>
-      </header>
-      {error && <p className="error">Could not load data: {error}</p>}
-      {!globe && !error && <p className="loading">Loading…</p>}
-      {globe && (
-        <>
-          <Globe
-            globe={globe}
-            detail={detail}
-            scale={scale}
-            showLabels={!playing}
-            view={view}
-            onViewChange={setView}
-          />
-          <MonthSlider
-            position={position}
-            playing={playing}
-            onChange={(p) => {
-              setPlaying(false)
-              setPosition(p)
-            }}
-            onTogglePlay={() => setPlaying((p) => !p)}
-          />
-          <Legend scale={scale} />
-          <Controls
-            units={units}
-            step={step}
-            onUnitsChange={setUnits}
-            onStepChange={(s) => setStepIndex(STEP_OPTIONS[units].indexOf(s))}
-          />
-          <p className="source">
-            Data: {globe.grid.info.title}, {globe.grid.info.period} average. {globe.grid.info.credit}. Drag to rotate, scroll or pinch to zoom.
+    <div className="layout">
+      <BodyMenu bodies={BODIES} selected={bodyId} onSelect={navigate} />
+      <main>
+        <header>
+          <p className="eyebrow">{body.name}</p>
+          <h1>{nearestMonthName(position)}</h1>
+          <p className="subtitle">
+            Average surface air temperature, isotherms every {step}&nbsp;°{units}
           </p>
-        </>
-      )}
-    </main>
+        </header>
+        {error && <p className="error">Could not load data: {error}</p>}
+        {!globe && !error && <p className="loading">Loading…</p>}
+        {globe && (
+          <>
+            <Globe
+              globe={globe}
+              detail={detail}
+              scale={scale}
+              showLabels={!playing}
+              view={view}
+              onViewChange={setView}
+            />
+            <MonthSlider
+              position={position}
+              playing={playing}
+              onChange={(p) => {
+                setPlaying(false)
+                setPosition(p)
+              }}
+              onTogglePlay={() => setPlaying((p) => !p)}
+            />
+            <Legend scale={scale} />
+            <Controls
+              units={units}
+              step={step}
+              onUnitsChange={setUnits}
+              onStepChange={(s) => setStepIndex(STEP_OPTIONS[units].indexOf(s))}
+            />
+            <p className="source">
+              Data: {globe.grid.info.title}, {globe.grid.info.period} average. {globe.grid.info.credit}. Drag to rotate, scroll or pinch to zoom.
+            </p>
+          </>
+        )}
+      </main>
+    </div>
   )
 }

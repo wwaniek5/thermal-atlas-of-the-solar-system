@@ -366,3 +366,139 @@ h1 {
   outline: 2px solid #2a78d6;
   outline-offset: -2px;
 }
+
+/* Layout: body menu on the left, content on the right */
+
+.layout {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 680px);
+  justify-content: center;
+  gap: 32px;
+  padding: 0 16px;
+}
+
+.layout main {
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.eyebrow {
+  margin: 0 0 2px;
+  color: var(--ink-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.body-menu {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  padding-top: 24px;
+}
+
+.body-menu ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.body-menu a,
+.body-menu .unavailable {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.body-menu .moon a,
+.body-menu .moon .unavailable {
+  padding-left: 24px;
+  font-size: 0.85rem;
+}
+
+.body-menu a:hover {
+  background: var(--hairline);
+}
+
+.body-menu a[aria-current='page'] {
+  background: var(--ink);
+  color: var(--surface);
+  font-weight: 600;
+}
+
+.body-menu .unavailable {
+  color: var(--ink-muted);
+  cursor: default;
+}
+
+.body-menu a:focus-visible {
+  outline: 2px solid #2a78d6;
+  outline-offset: 1px;
+}
+
+/* Narrow screens: a row of chips above the content that scrolls sideways,
+   fading at the edges to show there is more. */
+@media (max-width: 720px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .body-menu {
+    position: static;
+    margin: 0 -16px;
+    padding: 12px 0 4px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to right, transparent, #000 16px, #000 calc(100% - 24px), transparent);
+  }
+
+  .body-menu::-webkit-scrollbar {
+    display: none;
+  }
+
+  .body-menu ul {
+    display: flex;
+    gap: 6px;
+    width: max-content;
+    padding: 0 16px;
+  }
+
+  .body-menu li {
+    scroll-snap-align: start;
+    scroll-margin-left: 16px;
+  }
+
+  .body-menu a,
+  .body-menu .unavailable,
+  .body-menu .moon a,
+  .body-menu .moon .unavailable {
+    width: auto;
+    padding: 6px 14px;
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    background: var(--surface);
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .body-menu a[aria-current='page'] {
+    border-color: var(--ink);
+    background: var(--ink);
+  }
+
+  .body-menu .unavailable {
+    border-color: transparent;
+    background: none;
+  }
+}

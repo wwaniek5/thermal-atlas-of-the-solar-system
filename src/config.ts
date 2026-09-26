@@ -11,8 +11,8 @@ export const DATA_SOURCE: 'noaa' | 'era5' = 'era5'
 
 export const DEFAULT_UNITS: Units = 'C'
 
-/** Index into STEP_OPTIONS: 0 fine, 1 default, 2 coarse. */
-export const DEFAULT_STEP_INDEX = 1
+/** Index into STEP_OPTIONS (fine to coarse): 0 = 2 °C / 5 °F. */
+export const DEFAULT_STEP_INDEX = 0
 
 /** 1 = January ... 12 = December. */
 export const DEFAULT_MONTH = 1
