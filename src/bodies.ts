@@ -1,6 +1,7 @@
 import { DATA_SOURCE } from './config'
 import type { CalendarId } from './months'
 import type { ColorRange } from './map/colors'
+import type { Units } from './map/scale'
 import type { View } from './map/view'
 
 /** A named place drawn on the globe: [longitude east, latitude], degrees. */
@@ -18,31 +19,53 @@ export interface Body {
   source?: string
   /** What the temperatures are, shown under the heading. */
   quantity?: string
-  calendar?: CalendarId
+  /** How the slider is labelled; with several, the page offers a switch (first is default). */
+  calendars?: CalendarId[]
   /** Where the globe starts. */
   view?: View
-  /** Default isotherm spacing: index into STEP_OPTIONS (0 = finest). */
+  /** Isotherm spacing choices, fine to coarse; STEP_OPTIONS if unset. */
+  stepOptions?: Record<Units, number[]>
+  /** Default spacing: index into the spacing choices (0 = finest). */
   stepIndex?: number
   /** °C for [darkest blue, neutral gray, darkest red]; Earth's range if unset. */
   colors?: ColorRange
-  /**
-   * What's drawn under the isotherms: Earth's coastlines and borders, or
-   * contour lines of the source's terrain at these elevations (metres).
-   */
+  /** Draw Earth's coastlines and borders. */
+  coastlines?: boolean
+  /** Otherwise: contour lines of the source's terrain at these elevations (metres), if it has terrain. */
   terrainLevels?: number[]
   features?: Feature[]
 }
 
 /** In order from the Sun. */
 export const BODIES: Body[] = [
-  { id: 'mercury', name: 'Mercury' },
+  {
+    id: 'mercury',
+    name: 'Mercury',
+    source: 'mercury',
+    quantity: 'Surface temperature (thermal model)',
+    calendars: ['mercury-day', 'mercury-orbit'],
+    // Side-on to the Sun at the start (noon at 0°): day, night and the terminator in view.
+    view: { rotation: [80, -20], zoom: 1 },
+    // About −205 to +425 °C: 2° lines would be hundreds of isotherms.
+    stepOptions: { C: [10, 20, 50], F: [20, 50, 100] },
+    stepIndex: 1,
+    colors: [-200, 110, 420],
+    features: [
+      // At perihelion noon (the hottest), and at aphelion noon.
+      { name: 'Hot pole', lonLat: [0, 0] },
+      { name: 'Hot pole', lonLat: [180, 0] },
+      { name: 'Warm pole', lonLat: [90, 0] },
+      { name: 'Warm pole', lonLat: [-90, 0] },
+    ],
+  },
   { id: 'venus', name: 'Venus' },
   {
     id: 'earth',
     name: 'Earth',
     source: DATA_SOURCE,
     quantity: 'Average surface air temperature',
-    calendar: 'earth',
+    calendars: ['earth'],
+    coastlines: true,
     view: { rotation: [-10, -25], zoom: 1 },
     stepIndex: 0,
   },
@@ -52,7 +75,7 @@ export const BODIES: Body[] = [
     name: 'Mars',
     source: 'mars',
     quantity: 'Average surface temperature, day and night',
-    calendar: 'mars',
+    calendars: ['mars'],
     // Tharsis and Valles Marineris.
     view: { rotation: [90, -10], zoom: 1 },
     // Mars's months span about −131 to −14 °C, averaging about −65 °C.

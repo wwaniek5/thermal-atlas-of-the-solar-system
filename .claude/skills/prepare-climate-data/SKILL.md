@@ -44,12 +44,16 @@ key: <your token>
 - Mars needs a one-off 4.5 GB download (the NASA server doesn't support partial
   downloads, and stalls sometimes, so restart from scratch if it hangs). Only the
   monthly means are kept, in `mars-ts-monthly.npz`, and the big file is deleted.
+- Mercury isn't downloaded but computed (`sources/mercury.py`): about 20 minutes
+  of CPU, cached as `mercury-model.npz`. Check: hot poles ~700 K at perihelion
+  noon, warm poles ~570 K, night ~100 K (Vasavada et al. 1999).
 
 | id     | dataset                                            | native grid         | format |
 |--------|----------------------------------------------------|---------------------|--------|
 | `noaa` | NCEP/NCAR Reanalysis 1, 2 m air temp, 1991-2020    | T62 Gaussian, ~1.9° | 1      |
 | `era5` | ERA5 monthly means, 2 m air temp, 1991-2020        | 0.25° regular       | 2      |
 | `mars` | NASA Ames FV3 Mars GCM, surface temp, 12 Mars months (30° of Ls) + terrain | 2° regular | 1 |
+| `mercury` | Thermal model computed here (sunlight + regolith heat conduction), 12 steps through one solar day | 2° regular | 1 |
 
 ## Output formats
 

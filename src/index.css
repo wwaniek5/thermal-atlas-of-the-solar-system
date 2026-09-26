@@ -258,11 +258,21 @@ h1 {
 .ticks span {
   position: absolute;
   transform: translateX(-50%);
+  white-space: nowrap;
 }
 
-/* On narrow screens, label every other month. */
+/* The end labels sit inside the track, so long ones aren't cut off. */
+.ticks span:first-child {
+  transform: none;
+}
+
+.ticks span:last-child {
+  transform: translateX(-100%);
+}
+
+/* On narrow screens, label every other step (unless most ticks are blank already). */
 @media (max-width: 480px) {
-  .ticks span:nth-child(even) {
+  .ticks:not(.sparse) span:nth-child(even) {
     visibility: hidden;
   }
 }

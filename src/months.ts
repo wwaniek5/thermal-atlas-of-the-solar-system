@@ -1,3 +1,5 @@
+import { dayAt, formatLongitude, orbitLabel, SOLAR_DAY_DAYS, subsolarLongitude } from './mercury'
+
 export const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -18,6 +20,8 @@ export function describePosition(position: number): string {
 
 /** How a body's year is split into the slider's 12 steps. */
 export interface Calendar {
+  /** Name in the "Slider shows" switch, for bodies with more than one calendar. */
+  label: string
   /** Heading for a slider position, e.g. "January". */
   title: (position: number) => string
   /** Tick labels under the slider: 12 steps plus the wrap-around back to the start. */
@@ -27,6 +31,7 @@ export interface Calendar {
 }
 
 const EARTH: Calendar = {
+  label: 'Months',
   title: nearestMonthName,
   ticks: [...MONTH_NAMES, MONTH_NAMES[0]].map((name) => name.slice(0, 3)),
   describe: describePosition,
@@ -41,6 +46,7 @@ function marsMonth(position: number): number {
 
 /** Mars months are 30° of solar longitude (Ls), Month 1 starting at the northern spring equinox. */
 const MARS: Calendar = {
+  label: 'Mars months',
   title: (position) => {
     const m = marsMonth(position)
     return `Month ${m + 1} · ${MARS_SEASONS[Math.floor(m / 3)]}`
@@ -54,5 +60,29 @@ const MARS: Calendar = {
   },
 }
 
-export const CALENDARS = { earth: EARTH, mars: MARS } satisfies Record<string, Calendar>
+/** Mercury, one solar day (176 Earth days) in 12 steps, labelled by day and where it's noon. */
+const MERCURY_DAY: Calendar = {
+  label: 'Solar day',
+  title: (position) => {
+    const day = dayAt(Math.round(position))
+    return `Day ${Math.round(day)} · noon at ${formatLongitude(subsolarLongitude(day))}`
+  },
+  ticks: Array.from({ length: 13 }, (_, i) => String(Math.round((i / 12) * SOLAR_DAY_DAYS))),
+  describe: (position) => `Day ${Math.round(dayAt(position))} of ${Math.round(SOLAR_DAY_DAYS)}`,
+}
+
+/** The same solar day seen as Mercury's two orbits (3:2 spin–orbit resonance). */
+const MERCURY_ORBIT: Calendar = {
+  label: 'Orbit',
+  title: orbitLabel,
+  ticks: ['Perihelion', '', '', 'Aphelion', '', '', 'Perihelion', '', '', 'Aphelion', '', '', 'Perihelion'],
+  describe: (position) => orbitLabel(position),
+}
+
+export const CALENDARS = {
+  earth: EARTH,
+  mars: MARS,
+  'mercury-day': MERCURY_DAY,
+  'mercury-orbit': MERCURY_ORBIT,
+} satisfies Record<string, Calendar>
 export type CalendarId = keyof typeof CALENDARS

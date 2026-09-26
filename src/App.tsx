@@ -17,7 +17,7 @@ import { useRegion } from './data/useRegion'
 import { computeIsotherms } from './map/isotherms'
 import { useIsotherms } from './map/useIsotherms'
 import { buildScale, STEP_OPTIONS, type Units } from './map/scale'
-import { CALENDARS } from './months'
+import { CALENDARS, type CalendarId } from './months'
 import { bodyFromPath, useBodyRoute } from './routing'
 
 const bodyById = (id: string): Body => BODIES.find((b) => b.id === id)!
@@ -32,7 +32,7 @@ export default function App() {
   const [units, setUnits] = useState<Units>(DEFAULT_UNITS)
   // Kept as fine/default/coarse, so switching units keeps the density.
   const [stepIndex, setStepIndex] = useState(initial.stepIndex ?? DEFAULT_STEP_INDEX)
-  const step = STEP_OPTIONS[units][stepIndex]
+  const [calendarId, setCalendarId] = useState<CalendarId>(initial.calendars?.[0] ?? 'earth')
   const [view, setView] = useState(initial.view ?? DEFAULT_VIEW)
 
   // Each body has its own page (/earth, /mars); switching starts it afresh
@@ -44,10 +44,13 @@ export default function App() {
     setPlaying(false)
     setView(next.view ?? DEFAULT_VIEW)
     setStepIndex(next.stepIndex ?? DEFAULT_STEP_INDEX)
+    setCalendarId(next.calendars?.[0] ?? 'earth')
   })
   const body = bodyById(bodyId)
   const dataSource = body.source!
-  const calendar = CALENDARS[body.calendar ?? 'earth']
+  const calendar = CALENDARS[calendarId]
+  const stepOptions = body.stepOptions ?? STEP_OPTIONS
+  const step = stepOptions[units][stepIndex]
 
   useEffect(() => {
     let cancelled = false
@@ -150,10 +153,14 @@ export default function App() {
               units={units}
               step={step}
               onUnitsChange={setUnits}
-              onStepChange={(s) => setStepIndex(STEP_OPTIONS[units].indexOf(s))}
+              stepOptions={stepOptions[units]}
+              onStepChange={(s) => setStepIndex(stepOptions[units].indexOf(s))}
+              calendars={(body.calendars ?? []).map((id) => ({ id, label: CALENDARS[id].label }))}
+              calendar={calendarId}
+              onCalendarChange={setCalendarId}
             />
             <p className="source">
-              Data: {globe.grid.info.title}, {globe.grid.info.period} average. {globe.grid.info.credit}. Drag to rotate, scroll or pinch to zoom.
+              Data: {globe.grid.info.title}, {globe.grid.info.period}. {globe.grid.info.credit}. Drag to rotate, scroll or pinch to zoom.
             </p>
           </>
         )}
@@ -162,9 +169,12 @@ export default function App() {
   )
 }
 
-/** Coastlines for Earth; elevation contours and feature names for bodies with terrain data. */
+/** Coastlines for Earth; otherwise elevation contours (if the source has terrain) and feature names. */
 function makeBasemap(body: Body, terrain: Grid | null): Basemap {
-  if (!terrain || !body.terrainLevels) return { kind: 'earth' }
-  const lines = computeIsotherms(terrain, body.terrainLevels).flatMap((c) => c.line.coordinates)
+  if (body.coastlines) return { kind: 'earth' }
+  const lines =
+    terrain && body.terrainLevels
+      ? computeIsotherms(terrain, body.terrainLevels).flatMap((c) => c.line.coordinates)
+      : []
   return { kind: 'terrain', contours: { type: 'MultiLineString', coordinates: lines }, features: body.features ?? [] }
 }

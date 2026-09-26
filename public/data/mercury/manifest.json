@@ -1,0 +1,29 @@
+{
+  "source": "mercury",
+  "title": "Mercury surface temperature (thermal model)",
+  "period": "one solar day",
+  "credit": "Thermal model (Hayne et al. 2017 regolith properties) computed for this site",
+  "units": "degC",
+  "scale": 0.1,
+  "nlat": 91,
+  "nlon": 180,
+  "lat0": 90.0,
+  "dlat": -2.0,
+  "lon0": -180.0,
+  "dlon": 2.0,
+  "months": [
+    "month-01.json",
+    "month-02.json",
+    "month-03.json",
+    "month-04.json",
+    "month-05.json",
+    "month-06.json",
+    "month-07.json",
+    "month-08.json",
+    "month-09.json",
+    "month-10.json",
+    "month-11.json",
+    "month-12.json"
+  ],
+  "dataDir": "5237941515"
+}

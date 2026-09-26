@@ -41,7 +41,10 @@ export function MonthSlider({ position, calendar, playing, onChange, onTogglePla
           aria-label="Month"
           aria-valuetext={calendar.describe(position)}
         />
-        <div className="ticks" aria-hidden="true">
+        <div
+          className={calendar.ticks.filter(Boolean).length <= 7 ? 'ticks sparse' : 'ticks'}
+          aria-hidden="true"
+        >
           {calendar.ticks.map((tick, i) => (
             <span key={i} style={{ left: `${(i / 12) * 100}%` }}>
               {tick}
