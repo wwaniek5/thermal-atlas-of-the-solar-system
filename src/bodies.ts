@@ -178,7 +178,31 @@ export const BODIES: Body[] = [
       { name: 'Planum Australe', lonLat: [160, -84] },
     ],
   },
-  { id: 'jupiter', name: 'Jupiter' },
+  {
+    id: 'jupiter',
+    name: 'Jupiter',
+    source: 'jupiter',
+    quantity: 'Temperature high in the atmosphere (infrared, VLT telescope)',
+    staticTitle: '24–27 May 2018',
+    // The Great Red Spot, with both equatorial belts.
+    view: { rotation: [150, 10], zoom: 1 },
+    // About −160 to −147 °C (113-126 K): 2 °C lines would be only a handful.
+    stepOptions: { C: [1, 2, 5], F: [2, 5, 10] },
+    stepIndex: 0,
+    colors: [-160, -154, -147],
+    features: [
+      { name: 'Great Red Spot', lonLat: [-157, -20] },
+      { name: 'North Equatorial Belt', lonLat: [-110, 15] },
+      { name: 'Equatorial Zone', lonLat: [-120, 1] },
+      { name: 'South Equatorial Belt', lonLat: [-110, -15] },
+    ],
+    // Checked against the data: belts ~122-123 K, equator ~118 K, 80° ~114 K.
+    about: [
+      'Jupiter has no surface. This is the temperature of the air high in its atmosphere, just above the clouds, where the pressure is a few tenths of Earth\'s. A telescope in Chile measured the infrared light this air gives off over four nights in May 2018.',
+      'The stripes are belts and zones. In the dark belts air sinks and warms, and in the pale zones it rises and cools, so the belts are a few degrees warmer. The Great Red Spot is a giant storm, colder than its surroundings.',
+      'There are almost no seasons (the axis is tilted only 3°), and Jupiter\'s own inner heat evens out the temperature, so the equator is barely warmer than the mid-latitudes. The polar regions are colder. The telescope can\'t see well beyond about 78°, so there the map just continues the last measured values.',
+    ],
+  },
   { id: 'saturn', name: 'Saturn' },
   { id: 'uranus', name: 'Uranus' },
   { id: 'neptune', name: 'Neptune' },

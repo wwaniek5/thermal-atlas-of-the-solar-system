@@ -1,0 +1,18 @@
+{
+  "source": "jupiter",
+  "title": "Jupiter upper-troposphere temperature (VLT/VISIR 18.7 \u00b5m)",
+  "period": "24-27 May 2018",
+  "credit": "ESO VLT/VISIR frames calibrated by Bardet et al. (2024), combined for this site",
+  "units": "degC",
+  "scale": 0.1,
+  "nlat": 181,
+  "nlon": 360,
+  "lat0": 90.0,
+  "dlat": -1.0,
+  "lon0": -180.0,
+  "dlon": 1.0,
+  "months": [
+    "step-01.json"
+  ],
+  "dataDir": "d8d8b837dd"
+}

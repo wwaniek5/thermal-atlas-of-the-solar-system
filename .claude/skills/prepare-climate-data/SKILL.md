@@ -56,6 +56,7 @@ key: <your token>
 | `mercury` | Thermal model computed here (sunlight + regolith heat conduction), 72 steps through one solar day | 2° regular | 1 |
 | `moon` | Thermal model computed here (same engine as Mercury, `sources/thermal.py`), 72 steps through one lunar day | 2° regular | 1 |
 | `venus` | Magellan topography (USGS, 65 MB GeoTIFF) turned into temperature with the VIRA profile; 1 step (static) | 0.125° base; 2° globe + 1°-0.125° tiles | 2 |
+| `jupiter` | VLT/VISIR 18.7 µm frames (Zenodo 8401816, 52 files, ~20 MB) limb-corrected and median-combined with `sources/giants.py` (shared by the gas giants); 1 step (static) | 1° regular | 1 |
 
 ## Output formats
 
