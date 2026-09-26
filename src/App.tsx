@@ -143,6 +143,7 @@ export default function App() {
               showLabels={!playing}
               view={view}
               onViewChange={setView}
+              unmeasuredNorthOf={body.unmeasuredNorthOf}
             />
             <div className="panel">
               {/* Bodies whose temperatures don't change get no time control. */}

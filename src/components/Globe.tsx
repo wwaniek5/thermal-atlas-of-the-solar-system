@@ -1,4 +1,4 @@
-import { geoDistance, geoGraticule10, geoPath } from 'd3-geo'
+import { geoCircle, geoDistance, geoGraticule10, geoPath } from 'd3-geo'
 import type { FeatureCollection, MultiLineString, Polygon } from 'geojson'
 import { useEffect, useMemo, useRef, useState, type Dispatch, type PointerEvent, type SetStateAction } from 'react'
 import { feature, mesh } from 'topojson-client'
@@ -62,6 +62,8 @@ interface Props {
   showLabels: boolean
   view: View
   onViewChange: Dispatch<SetStateAction<View>>
+  /** Latitudes north of this have no data: covered in gray, without labels or temperatures. */
+  unmeasuredNorthOf?: number
 }
 
 interface Hover {
@@ -69,10 +71,11 @@ interface Hover {
   y: number
   lon: number
   lat: number
-  celsius: number
+  /** Null where nothing was measured. */
+  celsius: number | null
 }
 
-export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewChange }: Props) {
+export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewChange, unmeasuredNorthOf }: Props) {
   const [hover, setHover] = useState<Hover | null>(null)
   // While dragging or pinching, draw the light outlines to keep frames fast.
   const [interacting, setInteracting] = useState(false)
@@ -99,6 +102,8 @@ export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewC
           : labelPlacer.place(top.isotherms, scale.thresholds, freezing, projection),
     [labelPlacer, showLabels, interacting, top.isotherms, scale.thresholds, freezing, projection],
   )
+  const measured = (lat: number) => unmeasuredNorthOf === undefined || lat <= unmeasuredNorthOf
+  const visibleLabels = labels.filter((l) => measured(l.lonLat[1]))
   const detailBox = useMemo(() => (detail ? boxPolygon(detail.grid) : null), [detail])
 
   const [fineOutlines, setFineOutlines] = useState<Outlines | null>(null)
@@ -115,8 +120,12 @@ export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewC
       land: basemap.kind === 'earth' ? (path(land) ?? '') : '',
       borders: basemap.kind === 'earth' ? (path(borders) ?? '') : '',
       terrain: basemap.kind === 'terrain' ? (isothermPath(basemap.contours) ?? '') : '',
+      unmeasured:
+        unmeasuredNorthOf === undefined
+          ? ''
+          : (path(geoCircle().center([0, 90]).radius(90 - unmeasuredNorthOf)()) ?? ''),
     }),
-    [path, isothermPath, basemap, land, borders],
+    [path, isothermPath, basemap, land, borders, unmeasuredNorthOf],
   )
   const featureLabels = useMemo(() => {
     if (basemap.kind !== 'terrain') return []
@@ -191,7 +200,8 @@ export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewC
       return
     }
     const grid = detail && inside(detail.grid, lonLat) ? detail.grid : globe.grid
-    setHover({ x, y, lon: lonLat[0], lat: lonLat[1], celsius: sampleAt(grid, lonLat[0], lonLat[1]) })
+    const celsius = measured(lonLat[1]) ? sampleAt(grid, lonLat[0], lonLat[1]) : null
+    setHover({ x, y, lon: lonLat[0], lat: lonLat[1], celsius })
   }
 
   const onPointerUp = (e: PointerEvent<SVGSVGElement>) => {
@@ -250,6 +260,7 @@ export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewC
         <path d={fixedPaths.borders} className="border" />
         <path d={fixedPaths.terrain} className="terrain" />
         {lines(top, 'line')}
+        <path d={fixedPaths.unmeasured} className="unmeasured" />
         <path d={fixedPaths.sphere} className="outline" />
         <g className="features" aria-hidden="true">
           {featureLabels.map((f) =>
@@ -268,7 +279,7 @@ export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewC
           )}
         </g>
         <g className="labels" aria-hidden="true">
-          {labels.map((l, i) => (
+          {visibleLabels.map((l, i) => (
             <text key={i} x={l.x} y={l.y} className={l.freezing ? 'label label-freezing' : 'label'}>
               {l.text}
             </text>
@@ -281,7 +292,7 @@ export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewC
           className="tooltip"
           style={{ left: `${(hover.x / SIZE) * 100}%`, top: `${(hover.y / SIZE) * 100}%` }}
         >
-          <strong>{formatTemperature(hover.celsius, scale.units)}</strong>
+          <strong>{hover.celsius === null ? 'Not measured' : formatTemperature(hover.celsius, scale.units)}</strong>
           <span>{formatLonLat(hover.lon, hover.lat)}</span>
         </div>
       )}

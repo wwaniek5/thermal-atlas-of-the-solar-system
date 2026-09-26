@@ -59,6 +59,7 @@ key: <your token>
 | `jupiter` | VLT/VISIR 18.7 µm frames (Zenodo 8401816, 52 files, ~20 MB) limb-corrected and median-combined with `sources/giants.py` (shared by the gas giants); 1 step (static) | 1° regular | 1 |
 | `saturn` | Cassini/CIRS reconstructed temperatures (Fletcher et al. 2018, GitHub leighfletcher/CassiniCIRS, 43 MB IDL .sav, needs `scipy`) at 100 mbar; zonal; 41 quarterly steps 2007-2017, not cyclic | 2° regular | 1 |
 | `uranus` | Voyager 2/IRIS temperatures retrieved by Fletcher (GitHub leighfletcher/Voyager, three small CSVs, via `giants.voyager_profile`) at 100 mbar; zonal; 1 step (static, 1986) | 1° regular | 1 |
+| `neptune` | Voyager 2/IRIS (same repo and loader as Uranus) at 100 mbar; zonal; 1 step (static, 1989). No data north of 44°N: held flat there, and `unmeasuredNorthOf` in `src/bodies.ts` covers it in gray | 1° regular | 1 |
 
 ## Output formats
 

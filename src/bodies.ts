@@ -50,6 +50,12 @@ export interface Body {
    * per grid point.
    */
   detailScale?: number
+  /**
+   * Latitudes north of this were never measured: covered in gray on the
+   * globe, with no temperatures. The data holds the last measured value
+   * flat beyond it, so no isotherms are drawn there.
+   */
+  unmeasuredNorthOf?: number
 }
 
 /** In order from the Sun. */
@@ -251,7 +257,32 @@ export const BODIES: Body[] = [
       'The equator is about 2 °C warmer than the mid-latitudes, and the poles about 1 °C. Air is thought to rise and cool at mid-latitudes and to sink and warm over the equator and poles. Voyager\'s measurements were averaged around each latitude, so the map shows bands only.',
     ],
   },
-  { id: 'neptune', name: 'Neptune' },
+  {
+    id: 'neptune',
+    name: 'Neptune',
+    source: 'neptune',
+    quantity: 'Temperature at 100 mbar (Voyager 2)',
+    staticTitle: 'August 1989',
+    // The measured southern hemisphere, with the gray cap on the northern rim.
+    view: { rotation: [0, 10], zoom: 1 },
+    // About −221.6 to −216.4 °C (51.6-56.8 K).
+    stepOptions: { C: [0.5, 1, 2], F: [1, 2, 5] },
+    stepIndex: 0,
+    colors: [-221.6, -219, -216.4],
+    // Matches UNMEASURED_NORTH_OF in scripts/data/sources/neptune.py.
+    unmeasuredNorthOf: 44,
+    features: [
+      { name: 'Not measured', lonLat: [0, 52] },
+      { name: 'North pole', lonLat: [0, 90], symbol: 'pole' },
+      { name: 'South pole', lonLat: [0, -90], symbol: 'pole-south' },
+    ],
+    // Checked against the data: equator 56.8 K, 45-50°S 51.6 K, south pole 56.2 K.
+    about: [
+      'Neptune has no surface. This is the temperature near the top of its lower atmosphere, where the pressure is a tenth of Earth\'s, measured by Voyager 2, the only spacecraft to visit, when it flew past in August 1989.',
+      'As on Uranus, the equator is the warmest, the mid-latitudes are about 5 °C colder, and it warms again towards the south pole. It was southern summer: the far north was in the long polar night and out of Voyager\'s view, so it is shown gray.',
+      'Each season on Neptune lasts about 40 years. Telescope images from 2003-2007 show the same pattern at low and middle latitudes, while around the south pole it had warmed by 5-6 °C. Voyager\'s measurements were averaged around each latitude, so the map shows bands only.',
+    ],
+  },
 ]
 
 export const DEFAULT_BODY = 'earth'

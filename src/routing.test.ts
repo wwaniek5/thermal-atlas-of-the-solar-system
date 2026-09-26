@@ -13,9 +13,8 @@ describe('routes', () => {
     expect(bodyFromPath('/Earth')).toBe('earth')
   })
 
-  it('names no body for the root, unknown paths, or bodies without data yet', () => {
+  it('names no body for the root or unknown paths', () => {
     expect(bodyFromPath('/')).toBeNull()
     expect(bodyFromPath('/pluto')).toBeNull()
-    expect(bodyFromPath('/neptune')).toBeNull()
   })
 })

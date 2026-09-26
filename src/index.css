@@ -116,6 +116,13 @@ h1 {
   font-weight: 700;
 }
 
+.unmeasured {
+  fill: #b9b9b9;
+  stroke: var(--ink-muted);
+  stroke-width: 0.5;
+  stroke-dasharray: 3 3;
+}
+
 .outline {
   fill: none;
   stroke: var(--ink-muted);
