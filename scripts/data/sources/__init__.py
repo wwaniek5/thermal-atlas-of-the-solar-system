@@ -13,7 +13,7 @@ from typing import Callable
 
 from grid import ClimateGrid
 from pyramid import Level
-from sources import era5, mars, mercury, noaa, venus
+from sources import era5, mars, mercury, moon, noaa, venus
 
 
 @dataclass(frozen=True)
@@ -30,6 +30,7 @@ SOURCES = {
     "era5": Source(era5.load, levels=era5.LEVELS, credit=era5.CREDIT),
     "mars": Source(mars.load, credit=mars.CREDIT),
     "mercury": Source(mercury.load, credit=mercury.CREDIT),
+    "moon": Source(moon.load, credit=moon.CREDIT),
     # Radar noise makes pole spokes very visible on Venus.
     "venus": Source(venus.load, levels=venus.LEVELS, credit=venus.CREDIT, even_poles=True),
 }

@@ -1,6 +1,7 @@
 import { useRef, type KeyboardEvent, type PointerEvent } from 'react'
 import { dayAt, ECCENTRICITY, facingAngle, orbitPosition, positionAtAnomaly, SEMI_MAJOR_AU } from '../mercury'
 import { PlayButton } from './PlayButton'
+import { Swatch } from './Swatch'
 
 interface Props {
   /** 0..12 through one solar day (two orbits). */
@@ -137,14 +138,5 @@ export function MercuryOrbit({ position, describe, onChange, playing, onTogglePl
         </figcaption>
       </figure>
     </div>
-  )
-}
-
-/** The diagram's symbols, inline in the caption. */
-function Swatch({ className }: { className: string }) {
-  return (
-    <svg className="swatch" viewBox="-5 -5 10 10" aria-hidden="true">
-      <circle r={3.5} className={className} />
-    </svg>
   )
 }

@@ -54,6 +54,7 @@ key: <your token>
 | `era5` | ERA5 monthly means, 2 m air temp, 1991-2020        | 0.25° regular       | 2      |
 | `mars` | NASA Ames FV3 Mars GCM, surface temp, 12 Mars months (30° of Ls) + terrain | 2° regular | 1 |
 | `mercury` | Thermal model computed here (sunlight + regolith heat conduction), 72 steps through one solar day | 2° regular | 1 |
+| `moon` | Thermal model computed here (same engine as Mercury, `sources/thermal.py`), 72 steps through one lunar day | 2° regular | 1 |
 | `venus` | Magellan topography (USGS, 65 MB GeoTIFF) turned into temperature with the VIRA profile; 1 step (static) | 0.125° base; 2° globe + 1°-0.125° tiles | 2 |
 
 ## Output formats

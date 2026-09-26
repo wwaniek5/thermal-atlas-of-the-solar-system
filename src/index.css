@@ -744,3 +744,19 @@ h1 {
   font-size: 0.8rem;
   line-height: 1.45;
 }
+
+/* Moon's orbit diagram */
+.orbit-earth {
+  fill: #3f7fc9;
+  stroke: var(--ink);
+  stroke-width: 0.75;
+}
+
+.sunlight {
+  stroke: #e0a21f;
+  stroke-width: 1.5;
+}
+
+.sunlight-head {
+  fill: #e0a21f;
+}

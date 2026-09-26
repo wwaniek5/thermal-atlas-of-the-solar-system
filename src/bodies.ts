@@ -36,8 +36,10 @@ export interface Body {
   /** Otherwise: contour lines of the source's terrain at these elevations (metres), if it has terrain. */
   terrainLevels?: number[]
   features?: Feature[]
-  /** Show Mercury's orbit seen from above under the globe. */
-  orbitDiagram?: boolean
+  /** An orbit diagram under the globe that is also the time control. */
+  orbitDiagram?: 'mercury' | 'moon'
+  /** Where the slider starts, 0..12; the first step if unset. */
+  startPosition?: number
   /** A few short paragraphs explaining what the map shows. */
   about?: string[]
   /** Temperatures don't change over time: no slider or playback, and this heading. */
@@ -58,7 +60,7 @@ export const BODIES: Body[] = [
     source: 'mercury',
     quantity: 'Surface temperature (thermal model)',
     calendar: 'mercury',
-    orbitDiagram: true,
+    orbitDiagram: 'mercury',
     // Checked against the model: equator, night side, day 0.
     about: [
       'Mercury has no real atmosphere, only an extremely thin exosphere, so no air or wind moves heat around. Each spot\'s temperature depends only on its sunlight.',
@@ -116,7 +118,40 @@ export const BODIES: Body[] = [
     view: { rotation: [-10, -25], zoom: 1 },
     stepIndex: 0,
   },
-  { id: 'moon', name: 'Moon', parent: 'earth' },
+  {
+    id: 'moon',
+    name: 'Moon',
+    parent: 'earth',
+    source: 'moon',
+    quantity: 'Surface temperature (thermal model)',
+    calendar: 'moon',
+    orbitDiagram: 'moon',
+    // First quarter: sunrise runs down the middle of the near side.
+    startPosition: 3,
+    // Centred between the near side's middle (0°) and the noon spot (90°E), level with the equator.
+    view: { rotation: [-45, 0], zoom: 1 },
+    // About −200 to +120 °C.
+    stepOptions: { C: [10, 20, 50], F: [20, 50, 100] },
+    stepIndex: 0,
+    colors: [-190, -40, 120],
+    features: [
+      { name: 'North pole', lonLat: [0, 90], symbol: 'pole' },
+      { name: 'South pole', lonLat: [0, -90], symbol: 'pole-south' },
+      { name: '0° faces Earth', lonLat: [0, 0], symbol: 'marker' },
+      { name: 'Mare Imbrium', lonLat: [-15.6, 32.8] },
+      { name: 'Mare Serenitatis', lonLat: [17.5, 28] },
+      { name: 'Mare Tranquillitatis', lonLat: [31.4, 8.5] },
+      { name: 'Mare Crisium', lonLat: [59.1, 17] },
+      { name: 'Oceanus Procellarum', lonLat: [-57.4, 18.4] },
+      { name: 'Tycho', lonLat: [-11.2, -43.3] },
+    ],
+    // Checked against the model and Diviner: equator ~112 °C at noon, ~−175 °C before dawn.
+    about: [
+      'Like Mercury, the Moon has no atmosphere, so each spot\'s temperature depends only on its sunlight: about 112 °C at noon on the equator.',
+      'The Moon always shows the same face to Earth, but it still turns relative to the Sun: a lunar day, from one new moon to the next, lasts 29.5 Earth days. Each spot has about 15 days of sunshine, then 15 days of night.',
+      'The night side is not uniform: rocks and dust slowly release the heat they stored during the day. It is about −150 °C just after sunset and −175 °C just before dawn.',
+    ],
+  },
   {
     id: 'mars',
     name: 'Mars',

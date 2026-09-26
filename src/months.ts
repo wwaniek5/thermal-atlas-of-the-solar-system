@@ -1,4 +1,5 @@
 import { orbitLabel } from './mercury'
+import { phaseLabel } from './moon'
 
 export const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -63,9 +64,17 @@ const MERCURY_ORBIT: Calendar = {
   describe: (position) => orbitLabel(position),
 }
 
+/** The Moon: one lunar day (29.5 Earth days) in 12 steps, labelled by phase as seen from Earth. */
+const MOON: Calendar = {
+  title: phaseLabel,
+  ticks: ['New', '', '', 'First quarter', '', '', 'Full', '', '', 'Last quarter', '', '', 'New'],
+  describe: phaseLabel,
+}
+
 export const CALENDARS = {
   earth: EARTH,
   mars: MARS,
   mercury: MERCURY_ORBIT,
+  moon: MOON,
 } satisfies Record<string, Calendar>
 export type CalendarId = keyof typeof CALENDARS

@@ -3,6 +3,7 @@ import { Controls } from './components/Controls'
 import { Globe, type Basemap } from './components/Globe'
 import { Legend } from './components/Legend'
 import { MercuryOrbit } from './components/MercuryOrbit'
+import { MoonOrbit } from './components/MoonOrbit'
 import { MonthSlider } from './components/MonthSlider'
 import { BODIES, DEFAULT_BODY, type Body } from './bodies'
 import { BodyMenu } from './components/BodyMenu'
@@ -30,7 +31,7 @@ export default function App() {
   const [initial] = useState(() => bodyById(bodyFromPath(location.pathname) ?? DEFAULT_BODY))
   const [source, setSource] = useState<LoadedSource | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [position, setPosition] = useState(DEFAULT_MONTH - 1)
+  const [position, setPosition] = useState(initial.startPosition ?? DEFAULT_MONTH - 1)
   const [playing, setPlaying] = useState(false)
   const [units, setUnits] = useState<Units>(DEFAULT_UNITS)
   // Kept as fine/default/coarse, so switching units keeps the density.
@@ -45,6 +46,7 @@ export default function App() {
     setError(null)
     setPlaying(false)
     setView(next.view ?? DEFAULT_VIEW)
+    setPosition(next.startPosition ?? DEFAULT_MONTH - 1)
     setStepIndex(next.stepIndex ?? DEFAULT_STEP_INDEX)
   })
   const body = bodyById(bodyId)
@@ -143,7 +145,19 @@ export default function App() {
             />
             <div className="panel">
               {/* Bodies whose temperatures don't change get no time control. */}
-              {body.staticTitle ? null : body.orbitDiagram ? (
+              {body.staticTitle ? null : body.orbitDiagram === 'moon' ? (
+                // The Moon: its orbit around Earth is the time control.
+                <MoonOrbit
+                  position={position}
+                  describe={calendar.describe}
+                  onChange={(p) => {
+                    setPlaying(false)
+                    setPosition(p)
+                  }}
+                  playing={playing}
+                  onTogglePlay={() => setPlaying((p) => !p)}
+                />
+              ) : body.orbitDiagram === 'mercury' ? (
                 // Mercury: the orbit diagram is the time control.
                 <MercuryOrbit
                   position={position}
