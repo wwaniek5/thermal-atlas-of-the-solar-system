@@ -8,7 +8,8 @@ files the web app reads:
     ...
     public/data/<source>/<version>/month-12.json
 
-(<version> is a content hash; see publish.py.)
+(<version> is a content hash; see publish.py.) Optionally terrain.json:
+surface elevation in whole metres, same grid, row-major.
 
 Grid conventions (the app relies on these):
     - regular spacing in both directions
@@ -40,6 +41,9 @@ class ClimateGrid:
     lats: np.ndarray  # shape (nlat,), 90 -> -90, evenly spaced
     lons: np.ndarray  # shape (nlon,), -180 -> <180, evenly spaced
     celsius: np.ndarray  # shape (12, nlat, nlon)
+    # Optional surface elevation in metres on the same grid (nlat, nlon), for
+    # drawing terrain outlines on bodies without coastlines.
+    terrain: np.ndarray | None = None
 
     def validate(self) -> None:
         assert self.celsius.shape == (12, len(self.lats), len(self.lons)), self.celsius.shape
@@ -105,7 +109,14 @@ def write_grid(grid: ClimateGrid, out_root: Path, credit: str) -> Path:
         for m, filename in enumerate(months):
             ints = np.rint(grid.celsius[m] / SCALE).astype(int).ravel().tolist()
             (folder / filename).write_text(json.dumps({"month": m + 1, "values": ints}, separators=(",", ":")))
+        extra = {}
+        if grid.terrain is not None:
+            assert grid.terrain.shape == (len(grid.lats), len(grid.lons)), grid.terrain.shape
+            metres = np.rint(grid.terrain).astype(int).ravel().tolist()
+            (folder / "terrain.json").write_text(json.dumps({"values": metres}, separators=(",", ":")))
+            extra["terrain"] = "terrain.json"
         return {
+            **extra,
             "source": grid.source,
             "title": grid.title,
             "period": grid.period,

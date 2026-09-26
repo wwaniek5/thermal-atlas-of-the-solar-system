@@ -6,7 +6,9 @@ import type { GeometryCollection, Topology } from 'topojson-specification'
 import countries110m from 'world-atlas/countries-110m.json'
 import { sampleAt, type Grid } from '../data/grid'
 import { createLabelPlacer } from '../map/labels'
+import { isDarkColor } from '../map/colors'
 import { bandFill, FREEZING, formatTemperature, type TemperatureScale } from '../map/scale'
+import type { Feature } from '../bodies'
 import type { Layer } from '../map/useIsotherms'
 import { clampZoom, makeProjection, MAX_ZOOM, MIN_ZOOM, SIZE, type View } from '../map/view'
 
@@ -39,12 +41,22 @@ const sphere = { type: 'Sphere' } as const
 /** Zoom factor per +/− button press. */
 const ZOOM_STEP = 1.5
 
+/** What's drawn under the isotherms. */
+export type Basemap =
+  | { kind: 'earth' }
+  /** Bodies without coastlines: elevation contours and named features. */
+  | { kind: 'terrain'; contours: MultiLineString; features: Feature[] }
+
+/** Feature names are hidden this close to the rim, where they'd be squashed. */
+const FEATURE_MAX_ANGLE = (75 * Math.PI) / 180
+
 interface Props {
   /** Whole-globe layer. Its isotherms are hidden while the detail layer covers the screen. */
   globe: Layer
   /** Detailed layer for what's on screen when zoomed in, if loaded. */
   detail: Layer | null
   scale: TemperatureScale
+  basemap: Basemap
   /** Line labels; hidden while the year plays. */
   showLabels: boolean
   view: View
@@ -59,7 +71,7 @@ interface Hover {
   celsius: number
 }
 
-export function Globe({ globe, detail, scale, showLabels, view, onViewChange }: Props) {
+export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewChange }: Props) {
   const [hover, setHover] = useState<Hover | null>(null)
   // While dragging or pinching, draw the light outlines to keep frames fast.
   const [interacting, setInteracting] = useState(false)
@@ -83,7 +95,7 @@ export function Globe({ globe, detail, scale, showLabels, view, onViewChange }: 
   const detailBox = useMemo(() => (detail ? boxPolygon(detail.grid) : null), [detail])
 
   const [fineOutlines, setFineOutlines] = useState<Outlines | null>(null)
-  const wantFine = view.zoom >= DETAILED_OUTLINES_ZOOM
+  const wantFine = basemap.kind === 'earth' && view.zoom >= DETAILED_OUTLINES_ZOOM
   useEffect(() => {
     if (wantFine) loadDetailedOutlines().then(setFineOutlines)
   }, [wantFine])
@@ -93,11 +105,21 @@ export function Globe({ globe, detail, scale, showLabels, view, onViewChange }: 
     () => ({
       sphere: path(sphere) ?? '',
       graticule: path(graticule) ?? '',
-      land: path(land) ?? '',
-      borders: path(borders) ?? '',
+      land: basemap.kind === 'earth' ? (path(land) ?? '') : '',
+      borders: basemap.kind === 'earth' ? (path(borders) ?? '') : '',
+      terrain: basemap.kind === 'terrain' ? (isothermPath(basemap.contours) ?? '') : '',
     }),
-    [path, land, borders],
+    [path, isothermPath, basemap, land, borders],
   )
+  const featureLabels = useMemo(() => {
+    if (basemap.kind !== 'terrain') return []
+    const center: [number, number] = [-view.rotation[0], -view.rotation[1]]
+    return basemap.features.flatMap((f) => {
+      if (geoDistance(f.lonLat, center) > FEATURE_MAX_ANGLE) return []
+      const xy = projection(f.lonLat)
+      return xy ? [{ name: f.name, x: xy[0], y: xy[1] }] : []
+    })
+  }, [basemap, projection, view.rotation])
 
   // Wheel zoom. React's onWheel is passive and can't stop the page scrolling.
   useEffect(() => {
@@ -179,7 +201,13 @@ export function Globe({ globe, detail, scale, showLabels, view, onViewChange }: 
       <path
         key={`${prefix}${i}`}
         d={isothermPath(iso.line) ?? ''}
-        className={scale.thresholds[i] === freezing ? 'isotherm isotherm-freezing' : 'isotherm'}
+        className={[
+          'isotherm',
+          scale.thresholds[i] === freezing && 'isotherm-freezing',
+          isDarkColor(scale.color(scale.thresholdsC[i])) && 'isotherm-on-dark',
+        ]
+          .filter(Boolean)
+          .join(' ')}
       />
     ))
 
@@ -197,15 +225,15 @@ export function Globe({ globe, detail, scale, showLabels, view, onViewChange }: 
         onPointerLeave={() => setHover(null)}
       >
         {/* Whole globe. Everything colder than the lowest isotherm shows the sphere's own fill. */}
-        <path d={fixedPaths.sphere} fill={bandFill(scale.bands[0], scale.units)} />
+        <path d={fixedPaths.sphere} fill={bandFill(scale, scale.bands[0])} />
         {!detail && globe.isotherms.map((iso, i) => (
-          <path key={`band${i}`} d={isothermPath(iso.area) ?? ''} fill={bandFill(scale.bands[i + 1], scale.units)} />
+          <path key={`band${i}`} d={isothermPath(iso.area) ?? ''} fill={bandFill(scale, scale.bands[i + 1])} />
         ))}
         {detail && detailBox && (
           <g className="detail">
-            <path d={isothermPath(detailBox) ?? ''} fill={bandFill(scale.bands[0], scale.units)} />
+            <path d={isothermPath(detailBox) ?? ''} fill={bandFill(scale, scale.bands[0])} />
             {detail.isotherms.map((iso, i) => (
-              <path key={`dband${i}`} d={isothermPath(iso.area) ?? ''} fill={bandFill(scale.bands[i + 1], scale.units)} />
+              <path key={`dband${i}`} d={isothermPath(iso.area) ?? ''} fill={bandFill(scale, scale.bands[i + 1])} />
             ))}
           </g>
         )}
@@ -213,8 +241,16 @@ export function Globe({ globe, detail, scale, showLabels, view, onViewChange }: 
         <path d={fixedPaths.graticule} className="graticule" />
         <path d={fixedPaths.land} className="coast" />
         <path d={fixedPaths.borders} className="border" />
+        <path d={fixedPaths.terrain} className="terrain" />
         {lines(top, 'line')}
         <path d={fixedPaths.sphere} className="outline" />
+        <g className="features" aria-hidden="true">
+          {featureLabels.map((f) => (
+            <text key={f.name} x={f.x} y={f.y} className="feature">
+              {f.name}
+            </text>
+          ))}
+        </g>
         <g className="labels" aria-hidden="true">
           {labels.map((l, i) => (
             <text key={i} x={l.x} y={l.y} className={l.freezing ? 'label label-freezing' : 'label'}>

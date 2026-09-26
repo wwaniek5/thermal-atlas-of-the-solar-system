@@ -31,6 +31,8 @@ export interface Manifest extends GridInfo {
   /** Folder (next to the manifest) holding the data files; see scripts/data/publish.py. */
   dataDir: string
   months: string[]
+  /** Optional surface elevation in metres on the same grid. */
+  terrain?: string
 }
 
 /** Format 2 manifest. */
@@ -82,6 +84,8 @@ export interface LoadedSource {
   globe: Grid[][]
   /** Format 2 manifest, for loading zoom tiles; null for format 1. */
   pyramid: PyramidManifest | null
+  /** Surface elevation in metres (as `values`), if the source has it. */
+  terrain: Grid | null
 }
 
 /** A source's whole-globe grids, plus what's needed to load its zoom tiles. */
@@ -98,7 +102,7 @@ export async function loadSource(source: string): Promise<LoadedSource> {
         return pyramidYear(manifest, index, await res.arrayBuffer())
       }),
     )
-    return { globe, pyramid: manifest }
+    return { globe, pyramid: manifest, terrain: null }
   }
   const v1 = manifest as Manifest
   const year = await Promise.all(
@@ -107,7 +111,12 @@ export async function loadSource(source: string): Promise<LoadedSource> {
       return toGrid(v1, values)
     }),
   )
-  return { globe: [year], pyramid: null }
+  let terrain: Grid | null = null
+  if (v1.terrain) {
+    const { values } = await fetchJson<{ values: number[] }>(`${filesUrl(source, v1)}/${v1.terrain}`)
+    terrain = toGrid({ ...v1, scale: 1 }, values)
+  }
+  return { globe: [year], pyramid: null, terrain }
 }
 
 /** Split an untiled format 2 level (int16, [month][row][col]) into 12 grids. */

@@ -497,8 +497,36 @@ h1 {
     background: var(--ink);
   }
 
-  .body-menu .unavailable {
+  .body-menu .unavailable,
+  .body-menu .moon .unavailable {
     border-color: transparent;
     background: none;
   }
+}
+
+/* Terrain basemap (bodies without coastlines) */
+
+.terrain {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.4);
+  stroke-width: 0.8;
+  stroke-dasharray: 3 2;
+}
+
+.feature {
+  font-size: 10px;
+  font-style: italic;
+  fill: var(--ink-secondary);
+  text-anchor: middle;
+  dominant-baseline: central;
+  stroke: rgba(252, 252, 251, 0.8);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  pointer-events: none;
+}
+
+/* On very dark bands (below about −45 °C) dark lines would vanish. */
+.isotherm-on-dark {
+  stroke: rgba(255, 255, 255, 0.4);
 }

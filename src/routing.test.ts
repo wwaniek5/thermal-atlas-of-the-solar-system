@@ -5,6 +5,7 @@ describe('routes', () => {
   it('maps a body to its path and back', () => {
     expect(pathFor('earth')).toBe('/earth')
     expect(bodyFromPath('/earth')).toBe('earth')
+    expect(bodyFromPath('/mars')).toBe('mars')
   })
 
   it('tolerates a trailing slash and capitals', () => {
@@ -15,6 +16,6 @@ describe('routes', () => {
   it('names no body for the root, unknown paths, or bodies without data yet', () => {
     expect(bodyFromPath('/')).toBeNull()
     expect(bodyFromPath('/pluto')).toBeNull()
-    expect(bodyFromPath('/mars')).toBeNull()
+    expect(bodyFromPath('/venus')).toBeNull()
   })
 })

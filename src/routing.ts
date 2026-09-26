@@ -14,10 +14,10 @@ export function bodyFromPath(pathname: string): string | null {
 
 /**
  * The body in the URL. Other paths, including /, are replaced with the
- * default body's path. `onChange` runs whenever the body changes, by
+ * default body's path. `onChange` gets the new body whenever it changes, by
  * navigating or by the browser's back/forward buttons.
  */
-export function useBodyRoute(onChange: () => void): [string, (bodyId: string) => void] {
+export function useBodyRoute(onChange: (bodyId: string) => void): [string, (bodyId: string) => void] {
   const [bodyId, setBodyId] = useState(() => bodyFromPath(location.pathname) ?? DEFAULT_BODY)
   const onChangeRef = useRef(onChange)
   useEffect(() => {
@@ -29,7 +29,7 @@ export function useBodyRoute(onChange: () => void): [string, (bodyId: string) =>
     const onPopState = () => {
       const id = bodyFromPath(location.pathname) ?? DEFAULT_BODY
       setBodyId(id)
-      onChangeRef.current()
+      onChangeRef.current(id)
     }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
@@ -41,7 +41,7 @@ export function useBodyRoute(onChange: () => void): [string, (bodyId: string) =>
     if (id === bodyId) return
     history.pushState(null, '', pathFor(id))
     setBodyId(id)
-    onChangeRef.current()
+    onChangeRef.current(id)
   }
   return [bodyId, navigate]
 }

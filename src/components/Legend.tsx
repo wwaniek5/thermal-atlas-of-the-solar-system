@@ -28,7 +28,7 @@ export function Legend({ scale }: Props) {
           <span
             key={b.lower}
             className="legend-swatch"
-            style={{ flexGrow: b.upper - b.lower, background: bandFill(b, units) }}
+            style={{ flexGrow: b.upper - b.lower, background: bandFill(scale, b) }}
             title={`${b.lower} to ${b.upper} °${units}`}
           />
         ))}

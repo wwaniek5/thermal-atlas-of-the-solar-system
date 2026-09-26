@@ -41,11 +41,15 @@ key: <your token>
   while). An interrupted run resumes from the cached years. The averaged
   climatology is cached as `era5-t2m-monthly-1991-2020.npz`, so later runs
   only rewrite the output.
+- Mars needs a one-off 4.5 GB download (the NASA server doesn't support partial
+  downloads, and stalls sometimes, so restart from scratch if it hangs). Only the
+  monthly means are kept, in `mars-ts-monthly.npz`, and the big file is deleted.
 
 | id     | dataset                                            | native grid         | format |
 |--------|----------------------------------------------------|---------------------|--------|
 | `noaa` | NCEP/NCAR Reanalysis 1, 2 m air temp, 1991-2020    | T62 Gaussian, ~1.9° | 1      |
 | `era5` | ERA5 monthly means, 2 m air temp, 1991-2020        | 0.25° regular       | 2      |
+| `mars` | NASA Ames FV3 Mars GCM, surface temp, 12 Mars months (30° of Ls) + terrain | 2° regular | 1 |
 
 ## Output formats
 

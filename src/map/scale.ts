@@ -1,4 +1,4 @@
-import { temperatureColor } from './colors'
+import { EARTH_COLORS, makeColorScale, type ColorRange } from './colors'
 
 export type Units = 'C' | 'F'
 
@@ -34,13 +34,21 @@ export interface TemperatureScale {
    * base fill), and bands[i + 1] starts at thresholds[i].
    */
   bands: Band[]
+  /** Color of a temperature in °C, on this body's color range. */
+  color: (celsius: number) => string
 }
 
 /**
  * Isotherms every `step` display units covering [minC, maxC], plus the
  * freezing line when it falls inside the range.
  */
-export function buildScale(minC: number, maxC: number, units: Units, step: number): TemperatureScale {
+export function buildScale(
+  minC: number,
+  maxC: number,
+  units: Units,
+  step: number,
+  colors: ColorRange = EARTH_COLORS,
+): TemperatureScale {
   const min = fromCelsius(minC, units)
   const max = fromCelsius(maxC, units)
   const set = new Set<number>()
@@ -53,12 +61,19 @@ export function buildScale(minC: number, maxC: number, units: Units, step: numbe
     bands.push({ lower: thresholds[0] - step, upper: thresholds[0] })
     thresholds.forEach((t, i) => bands.push({ lower: t, upper: thresholds[i + 1] ?? t + step }))
   }
-  return { units, step, thresholds, thresholdsC: thresholds.map((t) => toCelsius(t, units)), bands }
+  return {
+    units,
+    step,
+    thresholds,
+    thresholdsC: thresholds.map((t) => toCelsius(t, units)),
+    bands,
+    color: makeColorScale(colors),
+  }
 }
 
 /** Fill for a band: the color of its midpoint temperature. */
-export function bandFill(band: Band, units: Units): string {
-  return temperatureColor(toCelsius((band.lower + band.upper) / 2, units))
+export function bandFill(scale: TemperatureScale, band: Band): string {
+  return scale.color(toCelsius((band.lower + band.upper) / 2, scale.units))
 }
 
 export function formatTemperature(celsius: number, units: Units, digits = 1): string {

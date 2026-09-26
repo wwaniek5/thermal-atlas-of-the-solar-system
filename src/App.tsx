@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Controls } from './components/Controls'
-import { Globe } from './components/Globe'
+import { Globe, type Basemap } from './components/Globe'
 import { Legend } from './components/Legend'
 import { MonthSlider } from './components/MonthSlider'
-import { BODIES } from './bodies'
+import { BODIES, DEFAULT_BODY, type Body } from './bodies'
 import { BodyMenu } from './components/BodyMenu'
 import {
   DEFAULT_MONTH,
@@ -12,32 +12,42 @@ import {
   DEFAULT_VIEW,
   PLAY_MONTHS_PER_SECOND,
 } from './config'
-import { gridAt, loadSource, type LoadedSource } from './data/grid'
+import { gridAt, loadSource, type Grid, type LoadedSource } from './data/grid'
 import { useRegion } from './data/useRegion'
+import { computeIsotherms } from './map/isotherms'
 import { useIsotherms } from './map/useIsotherms'
 import { buildScale, STEP_OPTIONS, type Units } from './map/scale'
-import { nearestMonthName } from './months'
-import { useBodyRoute } from './routing'
+import { CALENDARS } from './months'
+import { bodyFromPath, useBodyRoute } from './routing'
+
+const bodyById = (id: string): Body => BODIES.find((b) => b.id === id)!
 
 export default function App() {
+  // The body in the URL decides the starting view and line spacing.
+  const [initial] = useState(() => bodyById(bodyFromPath(location.pathname) ?? DEFAULT_BODY))
   const [source, setSource] = useState<LoadedSource | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [position, setPosition] = useState(DEFAULT_MONTH - 1)
   const [playing, setPlaying] = useState(false)
   const [units, setUnits] = useState<Units>(DEFAULT_UNITS)
   // Kept as fine/default/coarse, so switching units keeps the density.
-  const [stepIndex, setStepIndex] = useState(DEFAULT_STEP_INDEX)
+  const [stepIndex, setStepIndex] = useState(initial.stepIndex ?? DEFAULT_STEP_INDEX)
   const step = STEP_OPTIONS[units][stepIndex]
-  const [view, setView] = useState(DEFAULT_VIEW)
-  // Each body has its own page (/earth, ...); switching starts it afresh.
-  const [bodyId, navigate] = useBodyRoute(() => {
+  const [view, setView] = useState(initial.view ?? DEFAULT_VIEW)
+
+  // Each body has its own page (/earth, /mars); switching starts it afresh
+  // with that body's own view and line spacing.
+  const [bodyId, navigate] = useBodyRoute((id) => {
+    const next = bodyById(id)
     setSource(null)
     setError(null)
     setPlaying(false)
-    setView(DEFAULT_VIEW)
+    setView(next.view ?? DEFAULT_VIEW)
+    setStepIndex(next.stepIndex ?? DEFAULT_STEP_INDEX)
   })
-  const body = BODIES.find((b) => b.id === bodyId)!
+  const body = bodyById(bodyId)
   const dataSource = body.source!
+  const calendar = CALENDARS[body.calendar ?? 'earth']
 
   useEffect(() => {
     let cancelled = false
@@ -85,7 +95,10 @@ export default function App() {
     }
     return { min, max }
   }, [finest])
-  const scale = useMemo(() => buildScale(range?.min ?? 0, range?.max ?? 0, units, step), [range, units, step])
+  const scale = useMemo(
+    () => buildScale(range?.min ?? 0, range?.max ?? 0, units, step, body.colors),
+    [range, units, step, body.colors],
+  )
 
   const grid = useMemo(() => (year ? gridAt(year, position) : null), [year, position])
   // Isotherms are computed in background threads, one per layer. The globe
@@ -96,15 +109,17 @@ export default function App() {
   const detail = useIsotherms(region, scale.thresholdsC)
   const globe = globeLayer ?? (grid ? { grid, isotherms: [], thresholds: scale.thresholdsC } : null)
 
+  const basemap = useMemo(() => makeBasemap(body, source?.terrain ?? null), [body, source])
+
   return (
     <div className="layout">
       <BodyMenu bodies={BODIES} selected={bodyId} onSelect={navigate} />
       <main>
         <header>
           <p className="eyebrow">{body.name}</p>
-          <h1>{nearestMonthName(position)}</h1>
+          <h1>{calendar.title(position)}</h1>
           <p className="subtitle">
-            Average surface air temperature, isotherms every {step}&nbsp;°{units}
+            {body.quantity}, isotherms every {step}&nbsp;°{units}
           </p>
         </header>
         {error && <p className="error">Could not load data: {error}</p>}
@@ -115,12 +130,14 @@ export default function App() {
               globe={globe}
               detail={detail}
               scale={scale}
+              basemap={basemap}
               showLabels={!playing}
               view={view}
               onViewChange={setView}
             />
             <MonthSlider
               position={position}
+              calendar={calendar}
               playing={playing}
               onChange={(p) => {
                 setPlaying(false)
@@ -143,4 +160,11 @@ export default function App() {
       </main>
     </div>
   )
+}
+
+/** Coastlines for Earth; elevation contours and feature names for bodies with terrain data. */
+function makeBasemap(body: Body, terrain: Grid | null): Basemap {
+  if (!terrain || !body.terrainLevels) return { kind: 'earth' }
+  const lines = computeIsotherms(terrain, body.terrainLevels).flatMap((c) => c.line.coordinates)
+  return { kind: 'terrain', contours: { type: 'MultiLineString', coordinates: lines }, features: body.features ?? [] }
 }

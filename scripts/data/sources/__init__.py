@@ -13,7 +13,7 @@ from typing import Callable
 
 from grid import ClimateGrid
 from pyramid import Level
-from sources import era5, noaa
+from sources import era5, mars, noaa
 
 
 @dataclass(frozen=True)
@@ -26,4 +26,5 @@ class Source:
 SOURCES = {
     "noaa": Source(noaa.load, credit=noaa.CREDIT),
     "era5": Source(era5.load, levels=era5.LEVELS, credit=era5.CREDIT),
+    "mars": Source(mars.load, credit=mars.CREDIT),
 }

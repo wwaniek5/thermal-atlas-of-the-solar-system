@@ -1,14 +1,15 @@
-import { describePosition, MONTH_NAMES } from '../months'
+import type { Calendar } from '../months'
 
 interface Props {
-  /** 0 = January ... 12 = January again; fractions blend between months. */
+  /** 0 = first month ... 12 = first month again; fractions blend between months. */
   position: number
+  calendar: Calendar
   playing: boolean
   onChange: (position: number) => void
   onTogglePlay: () => void
 }
 
-export function MonthSlider({ position, playing, onChange, onTogglePlay }: Props) {
+export function MonthSlider({ position, calendar, playing, onChange, onTogglePlay }: Props) {
   return (
     <div className="month-slider">
       <button
@@ -38,12 +39,12 @@ export function MonthSlider({ position, playing, onChange, onTogglePlay }: Props
           value={position}
           onChange={(e) => onChange(Number(e.target.value))}
           aria-label="Month"
-          aria-valuetext={describePosition(position)}
+          aria-valuetext={calendar.describe(position)}
         />
         <div className="ticks" aria-hidden="true">
-          {[...MONTH_NAMES, MONTH_NAMES[0]].map((name, i) => (
+          {calendar.ticks.map((tick, i) => (
             <span key={i} style={{ left: `${(i / 12) * 100}%` }}>
-              {name.slice(0, 3)}
+              {tick}
             </span>
           ))}
         </div>

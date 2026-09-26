@@ -16,3 +16,6 @@ dist/
 *.tfstate.*
 *.tfplan
 public/data/*/.staging/
+
+# Claude Code worktrees (separate checkouts made by agent sessions)
+.claude/worktrees/
