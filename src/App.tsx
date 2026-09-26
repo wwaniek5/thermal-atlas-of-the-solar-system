@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Controls } from './components/Controls'
 import { Globe, type Basemap } from './components/Globe'
 import { Legend } from './components/Legend'
+import { MercuryOrbit } from './components/MercuryOrbit'
 import { MonthSlider } from './components/MonthSlider'
 import { BODIES, DEFAULT_BODY, type Body } from './bodies'
 import { BodyMenu } from './components/BodyMenu'
@@ -17,7 +18,7 @@ import { useRegion } from './data/useRegion'
 import { computeIsotherms } from './map/isotherms'
 import { useIsotherms } from './map/useIsotherms'
 import { buildScale, STEP_OPTIONS, type Units } from './map/scale'
-import { CALENDARS, type CalendarId } from './months'
+import { CALENDARS } from './months'
 import { bodyFromPath, useBodyRoute } from './routing'
 
 const bodyById = (id: string): Body => BODIES.find((b) => b.id === id)!
@@ -32,7 +33,6 @@ export default function App() {
   const [units, setUnits] = useState<Units>(DEFAULT_UNITS)
   // Kept as fine/default/coarse, so switching units keeps the density.
   const [stepIndex, setStepIndex] = useState(initial.stepIndex ?? DEFAULT_STEP_INDEX)
-  const [calendarId, setCalendarId] = useState<CalendarId>(initial.calendars?.[0] ?? 'earth')
   const [view, setView] = useState(initial.view ?? DEFAULT_VIEW)
 
   // Each body has its own page (/earth, /mars); switching starts it afresh
@@ -44,11 +44,10 @@ export default function App() {
     setPlaying(false)
     setView(next.view ?? DEFAULT_VIEW)
     setStepIndex(next.stepIndex ?? DEFAULT_STEP_INDEX)
-    setCalendarId(next.calendars?.[0] ?? 'earth')
   })
   const body = bodyById(bodyId)
   const dataSource = body.source!
-  const calendar = CALENDARS[calendarId]
+  const calendar = CALENDARS[body.calendar ?? 'earth']
   const stepOptions = body.stepOptions ?? STEP_OPTIONS
   const step = stepOptions[units][stepIndex]
 
@@ -128,7 +127,8 @@ export default function App() {
         {error && <p className="error">Could not load data: {error}</p>}
         {!globe && !error && <p className="loading">Loading…</p>}
         {globe && (
-          <>
+          // Wide screens: globe on the left, everything else in a column on the right.
+          <div className="content">
             <Globe
               globe={globe}
               detail={detail}
@@ -138,31 +138,52 @@ export default function App() {
               view={view}
               onViewChange={setView}
             />
-            <MonthSlider
-              position={position}
-              calendar={calendar}
-              playing={playing}
-              onChange={(p) => {
-                setPlaying(false)
-                setPosition(p)
-              }}
-              onTogglePlay={() => setPlaying((p) => !p)}
-            />
-            <Legend scale={scale} />
-            <Controls
-              units={units}
-              step={step}
-              onUnitsChange={setUnits}
-              stepOptions={stepOptions[units]}
-              onStepChange={(s) => setStepIndex(stepOptions[units].indexOf(s))}
-              calendars={(body.calendars ?? []).map((id) => ({ id, label: CALENDARS[id].label }))}
-              calendar={calendarId}
-              onCalendarChange={setCalendarId}
-            />
-            <p className="source">
-              Data: {globe.grid.info.title}, {globe.grid.info.period}. {globe.grid.info.credit}. Drag to rotate, scroll or pinch to zoom.
-            </p>
-          </>
+            <div className="panel">
+              {body.orbitDiagram ? (
+                // Mercury: the orbit diagram is the time control.
+                <MercuryOrbit
+                  position={position}
+                  describe={calendar.describe}
+                  onChange={(p) => {
+                    setPlaying(false)
+                    setPosition(p)
+                  }}
+                  playing={playing}
+                  onTogglePlay={() => setPlaying((p) => !p)}
+                />
+              ) : (
+                <MonthSlider
+                  position={position}
+                  calendar={calendar}
+                  playing={playing}
+                  onChange={(p) => {
+                    setPlaying(false)
+                    setPosition(p)
+                  }}
+                  onTogglePlay={() => setPlaying((p) => !p)}
+                />
+              )}
+              {body.about && (
+                <section className="about" aria-labelledby="about-heading">
+                  <h2 id="about-heading">About {body.name}</h2>
+                  {body.about.map((text) => (
+                    <p key={text}>{text}</p>
+                  ))}
+                </section>
+              )}
+              <Legend scale={scale} />
+              <Controls
+                units={units}
+                step={step}
+                onUnitsChange={setUnits}
+                stepOptions={stepOptions[units]}
+                onStepChange={(s) => setStepIndex(stepOptions[units].indexOf(s))}
+              />
+              <p className="source">
+                Data: {globe.grid.info.title}, {globe.grid.info.period}. {globe.grid.info.credit}. Drag to rotate, scroll or pinch to zoom.
+              </p>
+            </div>
+          </div>
         )}
       </main>
     </div>

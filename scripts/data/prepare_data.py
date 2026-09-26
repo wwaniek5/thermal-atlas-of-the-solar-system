@@ -33,7 +33,7 @@ def main() -> None:
 
     c = grid.celsius
     size = sum(f.stat().st_size for f in out_dir.rglob("*") if f.is_file())
-    print(f"Wrote {out_dir.relative_to(REPO)}: {len(grid.lats)} x {len(grid.lons)} grid, 12 months, {size / 1e6:.1f} MB")
+    print(f"Wrote {out_dir.relative_to(REPO)}: {len(grid.lats)} x {len(grid.lons)} grid, {len(c)} steps, {size / 1e6:.1f} MB")
     print(f"  range {c.min():.1f} .. {c.max():.1f} degC")
 
 

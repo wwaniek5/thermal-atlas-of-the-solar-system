@@ -13,8 +13,9 @@ computes one, the way published maps are made:
 - Surface energy balance: absorbed sunlight = emitted infrared + heat
   conducted downward; a small geothermal flux at the bottom.
 
-The model is spun up for several solar days, then 12 snapshots are
-recorded at equal steps through one solar day. Step 0 is perihelion with
+The model is spun up for several solar days, then 72 snapshots are
+recorded at equal steps through one solar day (every 2.4 Earth days), so
+the app's blending between neighbours stays close to the real motion. Step 0 is perihelion with
 the Sun overhead at 0° longitude (a "hot pole"); step 6 is the next
 perihelion with the Sun over 180°. Longitudes are east-positive.
 """
@@ -50,7 +51,7 @@ CHI = 2.7  # radiative conductivity parameter, at 350 K
 HEAT_CAPACITY = (-3.6125, 2.7431, 2.3616e-3, -1.2340e-5, 8.9093e-9)  # c(T) = Σ cᵢ Tⁱ, J/kg/K
 
 STEP = 2.0  # grid spacing, degrees
-SNAPSHOTS = 12
+SNAPSHOTS = 72
 SPIN_UP_DAYS = 4  # solar days before recording
 DT = 1800.0  # s; implicit, so stable at any step
 
@@ -98,7 +99,7 @@ def heat_capacity(T: np.ndarray) -> np.ndarray:
 
 
 def run_model() -> np.ndarray:
-    """Temperatures in K, shape (12, nlat, nlon) on the 2° grid (90..-90, -180..<180)."""
+    """Temperatures in K, shape (SNAPSHOTS, nlat, nlon) on the 2° grid (90..-90, -180..<180)."""
     lats = np.linspace(90, -90, int(180 / STEP) + 1)
     lons = np.arange(-180, 180, STEP)
     # No obliquity: the south mirrors the north, so compute 0..90 only.
@@ -121,7 +122,9 @@ def run_model() -> np.ndarray:
 
     T = np.full((n, cols), 300.0)
     steps_per_day = int(round(SOLAR_DAY_DAYS * 86400 / DT))
-    record_every = steps_per_day // SNAPSHOTS
+    # Record at the steps nearest to equal fractions of the last solar day.
+    start = steps_per_day * SPIN_UP_DAYS
+    record_at = {start + round(i * steps_per_day / SNAPSHOTS) for i in range(SNAPSHOTS)}
     snapshots = []
     total = steps_per_day * (SPIN_UP_DAYS + 1)
     print(f"  thermal model: {total} steps of {DT / 60:.0f} min over {SPIN_UP_DAYS + 1} solar days (~20 min)")
@@ -133,9 +136,8 @@ def run_model() -> np.ndarray:
         cos_z = np.clip(cos_lat * np.cos(lon - np.radians(sub_lon)), 0, None)
         absorbed = (1 - ALBEDO) * SOLAR_CONSTANT / dist**2 * cos_z
 
-        if step >= steps_per_day * SPIN_UP_DAYS and (step - steps_per_day * SPIN_UP_DAYS) % record_every == 0:
-            if len(snapshots) < SNAPSHOTS:
-                snapshots.append(T[0].copy())
+        if step in record_at:
+            snapshots.append(T[0].copy())
 
         T = _implicit_step(T, dz, rho, kc, absorbed)
 

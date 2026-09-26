@@ -47,8 +47,9 @@ export type Basemap =
   /** Bodies without coastlines: elevation contours and named features. */
   | { kind: 'terrain'; contours: MultiLineString; features: Feature[] }
 
-/** Feature names are hidden this close to the rim, where they'd be squashed. */
+/** Feature names are hidden this close to the rim, where they'd be squashed; symbols show up to the rim. */
 const FEATURE_MAX_ANGLE = (75 * Math.PI) / 180
+const SYMBOL_MAX_ANGLE = (90.5 * Math.PI) / 180
 
 interface Props {
   /** Whole-globe layer. Its isotherms are hidden while the detail layer covers the screen. */
@@ -115,9 +116,9 @@ export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewC
     if (basemap.kind !== 'terrain') return []
     const center: [number, number] = [-view.rotation[0], -view.rotation[1]]
     return basemap.features.flatMap((f) => {
-      if (geoDistance(f.lonLat, center) > FEATURE_MAX_ANGLE) return []
+      if (geoDistance(f.lonLat, center) > (f.symbol ? SYMBOL_MAX_ANGLE : FEATURE_MAX_ANGLE)) return []
       const xy = projection(f.lonLat)
-      return xy ? [{ name: f.name, x: xy[0], y: xy[1] }] : []
+      return xy ? [{ name: f.name, x: xy[0], y: xy[1], symbol: f.symbol }] : []
     })
   }, [basemap, projection, view.rotation])
 
@@ -245,11 +246,20 @@ export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewC
         {lines(top, 'line')}
         <path d={fixedPaths.sphere} className="outline" />
         <g className="features" aria-hidden="true">
-          {featureLabels.map((f) => (
-            <text key={f.name} x={f.x} y={f.y} className="feature">
-              {f.name}
-            </text>
-          ))}
+          {featureLabels.map((f) =>
+            f.symbol ? (
+              <g key={f.name}>
+                <circle cx={f.x} cy={f.y} r={5} className={f.symbol} />
+                <text x={f.x + 9} y={f.y} className={`feature ${f.symbol}-label`}>
+                  {f.name}
+                </text>
+              </g>
+            ) : (
+              <text key={f.name} x={f.x} y={f.y} className="feature">
+                {f.name}
+              </text>
+            ),
+          )}
         </g>
         <g className="labels" aria-hidden="true">
           {labels.map((l, i) => (

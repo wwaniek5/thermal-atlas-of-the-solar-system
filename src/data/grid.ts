@@ -144,17 +144,20 @@ export function pyramidYear(manifest: PyramidManifest, levelIndex: number, buffe
 }
 
 /**
- * The grid at a point in the year. `position` runs from 0 (January) up to
- * 12, wrapping, so 11.5 is halfway from December to January. Temperatures
- * are blended linearly between the two neighbouring months.
+ * The grid at a point in the cycle. `position` runs from 0 up to 12,
+ * wrapping (for Earth: 0 = January, 11.5 = halfway from December to
+ * January), whatever the number of steps in `year`: 12 months, or more for
+ * bodies that change fast (Mercury has 72). Temperatures are blended
+ * linearly between the two neighbouring steps.
  */
 export function gridAt(year: Grid[], position: number): Grid {
-  const p = ((position % 12) + 12) % 12
-  const i = Math.floor(p)
-  const t = p - i
+  const n = year.length
+  const p = ((((position % 12) + 12) % 12) / 12) * n
+  const i = Math.floor(p) % n
+  const t = p - Math.floor(p)
   const a = year[i]
   if (t === 0) return a
-  const b = year[(i + 1) % 12]
+  const b = year[(i + 1) % n]
   const values = new Float32Array(a.values.length)
   for (let k = 0; k < values.length; k++) {
     values[k] = a.values[k] + (b.values[k] - a.values[k]) * t

@@ -381,16 +381,50 @@ h1 {
 
 .layout {
   display: grid;
-  grid-template-columns: 160px minmax(0, 680px);
-  justify-content: center;
+  grid-template-columns: 160px minmax(0, 1fr);
   gap: 32px;
-  padding: 0 16px;
+  padding: 0 24px;
 }
 
 .layout main {
+  max-width: none;
   margin: 0;
   padding-left: 0;
   padding-right: 0;
+}
+
+/* The globe is as large as the window allows, but never taller than it. */
+.globe {
+  width: min(100%, calc(100vh - 140px));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Wide screens: globe left, controls in a column on the right. */
+@media (min-width: 1100px) {
+  .content {
+    display: grid;
+    /* The globe's column is as wide as the globe; the controls get the rest. */
+    grid-template-columns: auto minmax(340px, 560px);
+    align-items: start;
+    gap: 40px;
+  }
+
+  .content .globe {
+    /* Window height minus the header, and room left for the controls column. */
+    width: min(calc(100vh - 140px), calc(100vw - 160px - 32px - 48px - 340px - 40px));
+    margin-left: 0;
+  }
+
+  .panel {
+    position: sticky;
+    top: 16px;
+    padding-top: 16px;
+  }
+
+  .panel > :first-child {
+    margin-top: 0;
+  }
 }
 
 .eyebrow {
@@ -461,6 +495,7 @@ h1 {
   .layout {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
+    padding: 0 16px;
   }
 
   .body-menu {
@@ -539,4 +574,173 @@ h1 {
 /* On very dark bands (below about −45 °C) dark lines would vanish. */
 .isotherm-on-dark {
   stroke: rgba(255, 255, 255, 0.4);
+}
+
+/* Mercury's orbit, under the globe */
+
+.orbit {
+  margin: 8px 0 0;
+}
+
+.orbit-stage > svg {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.orbit figcaption {
+  margin-top: 2px;
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.orbit-path {
+  fill: none;
+  stroke: var(--ink-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.orbit-ray {
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.orbit-sun {
+  fill: #f5b83d;
+}
+
+.orbit-sun-glow {
+  fill: rgba(245, 184, 61, 0.25);
+}
+
+.orbit-mark {
+  fill: var(--ink-muted);
+}
+
+.orbit-planet {
+  fill: var(--surface);
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+/* Key dots in the caption: inline with the text, unlike the diagram itself. */
+.orbit svg.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin: 0 1px 0 4px;
+  vertical-align: -1px;
+}
+
+.orbit-label {
+  fill: var(--ink-secondary);
+  font-size: 10px;
+}
+
+/* The same spot on Mercury, on the globe and in the orbit diagram */
+.marker {
+  fill: #7b3fc4;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.pole {
+  fill: #1f8a5b;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.pole-south {
+  fill: #fff;
+  stroke: #1f8a5b;
+  stroke-width: 2;
+}
+
+.pole-south-label {
+  text-anchor: start;
+  font-style: normal;
+  font-weight: 600;
+  fill: #16633f;
+}
+
+.pole-label {
+  text-anchor: start;
+  font-style: normal;
+  font-weight: 600;
+  fill: #16633f;
+}
+
+.marker-label {
+  text-anchor: start;
+  font-style: normal;
+  font-weight: 600;
+  fill: #5a2d93;
+}
+
+/* Mercury: play button left of the orbit diagram, which is the time control */
+.orbit-control {
+  margin-top: 8px;
+}
+
+.orbit-control .orbit {
+  margin: 0;
+}
+
+/* The diagram, with a player bar under it. */
+.orbit-stage {
+  position: relative;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.orbit-player {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.orbit-stage > svg {
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.orbit-handle {
+  cursor: grab;
+  outline: none;
+}
+
+.orbit-handle:focus-visible .orbit-planet {
+  stroke: #2a78d6;
+  stroke-width: 2.5;
+}
+
+/* Short explanation for a body */
+.about {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.about h2 {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.about p {
+  margin: 6px 0 0;
+  color: var(--ink-secondary);
+  font-size: 0.8rem;
+  line-height: 1.45;
 }

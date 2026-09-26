@@ -1,4 +1,3 @@
-import type { CalendarId } from '../months'
 import type { Units } from '../map/scale'
 
 interface Props {
@@ -8,14 +7,9 @@ interface Props {
   stepOptions: number[]
   onUnitsChange: (units: Units) => void
   onStepChange: (step: number) => void
-  /** The body's slider labellings; the switch only shows when there are several. */
-  calendars: { id: CalendarId; label: string }[]
-  calendar: CalendarId
-  onCalendarChange: (id: CalendarId) => void
 }
 
-export function Controls(props: Props) {
-  const { units, step, stepOptions, onUnitsChange, onStepChange, calendars, calendar, onCalendarChange } = props
+export function Controls({ units, step, stepOptions, onUnitsChange, onStepChange }: Props) {
   return (
     <div className="controls">
       <Segmented
@@ -30,14 +24,6 @@ export function Controls(props: Props) {
         value={step}
         onChange={onStepChange}
       />
-      {calendars.length > 1 && (
-        <Segmented
-          label="Slider shows"
-          options={calendars.map((c) => ({ value: c.id, text: c.label }))}
-          value={calendar}
-          onChange={onCalendarChange}
-        />
-      )}
     </div>
   )
 }

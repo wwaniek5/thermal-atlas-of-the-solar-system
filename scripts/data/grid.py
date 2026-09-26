@@ -40,13 +40,16 @@ class ClimateGrid:
     period: str  # e.g. "1991-2020"
     lats: np.ndarray  # shape (nlat,), 90 -> -90, evenly spaced
     lons: np.ndarray  # shape (nlon,), -180 -> <180, evenly spaced
-    celsius: np.ndarray  # shape (12, nlat, nlon)
+    # shape (steps, nlat, nlon): 12 months, or more steps through the cycle
+    # for bodies that change fast (Mercury's solar day has 72).
+    celsius: np.ndarray
     # Optional surface elevation in metres on the same grid (nlat, nlon), for
     # drawing terrain outlines on bodies without coastlines.
     terrain: np.ndarray | None = None
 
     def validate(self) -> None:
-        assert self.celsius.shape == (12, len(self.lats), len(self.lons)), self.celsius.shape
+        assert self.celsius.shape[1:] == (len(self.lats), len(self.lons)), self.celsius.shape
+        assert len(self.celsius) >= 12, "need at least 12 steps through the cycle"
         assert np.isfinite(self.celsius).all(), "grid contains missing values"
         assert np.isclose(self.lats[0], 90) and np.isclose(self.lats[-1], -90), "lats must span 90..-90"
         assert np.isclose(self.lons[0], -180), "lons must start at -180"
@@ -105,7 +108,9 @@ def write_grid(grid: ClimateGrid, out_root: Path, credit: str) -> Path:
     grid.validate()
 
     def write(folder: Path) -> dict:
-        months = [f"month-{m:02d}.json" for m in range(1, 13)]
+        steps = len(grid.celsius)
+        name = "month" if steps == 12 else "step"
+        months = [f"{name}-{m:02d}.json" for m in range(1, steps + 1)]
         for m, filename in enumerate(months):
             ints = np.rint(grid.celsius[m] / SCALE).astype(int).ravel().tolist()
             (folder / filename).write_text(json.dumps({"month": m + 1, "values": ints}, separators=(",", ":")))

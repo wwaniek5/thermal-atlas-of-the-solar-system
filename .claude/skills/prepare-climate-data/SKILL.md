@@ -53,7 +53,7 @@ key: <your token>
 | `noaa` | NCEP/NCAR Reanalysis 1, 2 m air temp, 1991-2020    | T62 Gaussian, ~1.9° | 1      |
 | `era5` | ERA5 monthly means, 2 m air temp, 1991-2020        | 0.25° regular       | 2      |
 | `mars` | NASA Ames FV3 Mars GCM, surface temp, 12 Mars months (30° of Ls) + terrain | 2° regular | 1 |
-| `mercury` | Thermal model computed here (sunlight + regolith heat conduction), 12 steps through one solar day | 2° regular | 1 |
+| `mercury` | Thermal model computed here (sunlight + regolith heat conduction), 72 steps through one solar day | 2° regular | 1 |
 
 ## Output formats
 
@@ -70,7 +70,9 @@ tenths of °C. Each pole row holds a single value (a pole is one point);
 the pole and can't be joined.
 
 **Format 1** (`grid.py`, for small sources): `manifest.json` with the grid
-geometry plus `month-01.json` .. `month-12.json` holding
+geometry plus `month-01.json` .. `month-12.json` (or `step-01.json` ..
+`step-NN.json` for bodies with more steps through their cycle; the app spreads
+any number of steps over the same slider) holding
 `{"month": n, "values": [...]}`, row-major.
 
 **Format 2** (`pyramid.py`, for detailed sources): a resolution pyramid.
