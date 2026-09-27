@@ -1,7 +1,7 @@
 # The website: a private S3 bucket served over HTTPS by CloudFront.
 #
 #   terraform -chdir=infra/site init
-#   terraform -chdir=infra/site apply
+#   CLOUDFLARE_API_TOKEN=... terraform -chdir=infra/site apply   # see the deploy-site skill
 #   scripts/deploy.sh          # build and upload the site
 
 terraform {
@@ -10,6 +10,10 @@ terraform {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 6.0"
+    }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.0"
     }
   }
 
@@ -33,6 +37,76 @@ provider "aws" {
 variable "region" {
   type    = string
   default = "eu-north-1"
+}
+
+# CloudFront only uses certificates from us-east-1.
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+  default_tags {
+    tags = { Project = "isotherms" }
+  }
+}
+
+# Reads the API token from CLOUDFLARE_API_TOKEN (DNS edit and zone read on the domain only).
+provider "cloudflare" {}
+
+# Our own address, registered at Cloudflare. Its DNS, managed here, points it
+# and www at the distribution and holds the certificate's validation records.
+# Records are "DNS only": CloudFront serves HTTPS itself.
+variable "domain" {
+  type    = string
+  default = "isotherms.org"
+}
+
+resource "aws_acm_certificate" "site" {
+  provider                  = aws.us_east_1
+  domain_name               = var.domain
+  subject_alternative_names = ["www.${var.domain}"]
+  validation_method         = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+data "cloudflare_zone" "site" {
+  filter = { name = var.domain }
+}
+
+# Proves to AWS that we own the domain and www.
+resource "cloudflare_dns_record" "cert_validation" {
+  for_each = {
+    for o in aws_acm_certificate.site.domain_validation_options : o.domain_name => o
+  }
+  zone_id = data.cloudflare_zone.site.id
+  name    = trimsuffix(each.value.resource_record_name, ".")
+  type    = each.value.resource_record_type
+  content = trimsuffix(each.value.resource_record_value, ".")
+  ttl     = 1 # automatic
+  proxied = false
+  comment = "ACM certificate validation (Terraform, infra/site)"
+}
+
+# Waits until AWS has issued the certificate.
+resource "aws_acm_certificate_validation" "site" {
+  provider                = aws.us_east_1
+  certificate_arn         = aws_acm_certificate.site.arn
+  validation_record_fqdns = [for r in cloudflare_dns_record.cert_validation : r.name]
+}
+
+# The domain and www point at CloudFront (Cloudflare flattens the CNAME at
+# the root). After the distribution knows the names, or visitors get errors.
+resource "cloudflare_dns_record" "site" {
+  for_each   = toset([var.domain, "www.${var.domain}"])
+  zone_id    = data.cloudflare_zone.site.id
+  name       = each.value
+  type       = "CNAME"
+  content    = aws_cloudfront_distribution.site.domain_name
+  ttl        = 1
+  proxied    = false
+  comment    = "Site on CloudFront (Terraform, infra/site)"
+  depends_on = [aws_cloudfront_distribution.site]
 }
 
 data "aws_caller_identity" "current" {}
@@ -75,6 +149,14 @@ resource "aws_cloudfront_function" "routes" {
   code    = <<-EOT
     function handler(event) {
       var request = event.request;
+      // www redirects to the bare domain.
+      if (request.headers.host && request.headers.host.value === 'www.${var.domain}') {
+        return {
+          statusCode: 301,
+          statusDescription: 'Moved Permanently',
+          headers: { location: { value: 'https://${var.domain}' + request.uri } },
+        };
+      }
       var last = request.uri.split('/').pop();
       if (last.indexOf('.') === -1) request.uri = '/index.html';
       return request;
@@ -91,6 +173,7 @@ data "aws_cloudfront_cache_policy" "optimized" {
 resource "aws_cloudfront_distribution" "site" {
   enabled             = true
   comment             = "Isotherm globe"
+  aliases             = [var.domain, "www.${var.domain}"]
   default_root_object = "index.html"
   http_version        = "http2and3"
   # North America and Europe edge locations only: the cheapest option.
@@ -123,7 +206,9 @@ resource "aws_cloudfront_distribution" "site" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn      = aws_acm_certificate_validation.site.certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
 }
 
@@ -147,6 +232,10 @@ resource "aws_s3_bucket_policy" "site" {
 }
 
 output "url" {
+  value = "https://${var.domain}"
+}
+
+output "cloudfront_url" {
   value = "https://${aws_cloudfront_distribution.site.domain_name}"
 }
 
@@ -156,4 +245,13 @@ output "bucket" {
 
 output "distribution_id" {
   value = aws_cloudfront_distribution.site.id
+}
+
+# The DNS records that prove we own var.domain and www, for Cloudflare.
+output "certificate_validation" {
+  value = [for o in aws_acm_certificate.site.domain_validation_options : {
+    name  = o.resource_record_name
+    type  = o.resource_record_type
+    value = o.resource_record_value
+  }]
 }
