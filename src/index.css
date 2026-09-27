@@ -29,6 +29,23 @@ h1 {
   font-weight: 600;
 }
 
+/* The heading's second part (the season, phase...) goes on its own line when
+   the header is too narrow for the longest heading on one line, so playing
+   doesn't make the page jump (see Title in App.tsx). */
+header {
+  container-type: inline-size;
+}
+
+@container (max-width: 560px) {
+  .title-detail {
+    display: block;
+  }
+
+  .title-separator {
+    display: none;
+  }
+}
+
 .subtitle,
 .source {
   margin: 4px 0 0;

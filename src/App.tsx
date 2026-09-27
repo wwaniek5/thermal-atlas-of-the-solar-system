@@ -144,7 +144,7 @@ export default function App() {
       <main>
         <header>
           <p className="eyebrow">{body.name}</p>
-          <h1>{body.staticTitle ?? calendar.title(position)}</h1>
+          <Title text={body.staticTitle ?? calendar.title(position)} />
           <p className="subtitle">
             {body.quantity}, isotherms every {step}&nbsp;°{units}
           </p>
@@ -240,6 +240,26 @@ export default function App() {
         <SiteFooter />
       </main>
     </div>
+  )
+}
+
+/**
+ * The heading, e.g. "May 2009 · Northern winter". While playing it changes
+ * length, so where both parts don't fit on one line the second always goes
+ * on its own line (CSS), and the page doesn't jump as it wraps and unwraps.
+ */
+function Title({ text }: { text: string }) {
+  const [first, ...rest] = text.split(' · ')
+  return (
+    <h1 className="title">
+      {first}
+      {rest.length > 0 && (
+        <span className="title-detail">
+          <span className="title-separator"> · </span>
+          {rest.join(' · ')}
+        </span>
+      )}
+    </h1>
   )
 }
 
