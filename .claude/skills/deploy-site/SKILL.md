@@ -47,6 +47,12 @@ keeps its own state locally and gitignored; don't re-run it.
 
 ## Gotchas
 
+- Keep `cloudflare_dns_record.google_verification` in `infra/site/main.tf`:
+  removing it loses ownership of the Google Search Console property.
+- The sitemap and per-body pages come from `scripts/prerender.ts` at build time,
+  so a new body is picked up automatically once it has a `description` in
+  `src/bodies.ts`. Google re-reads the sitemap on its own.
+
 - The CloudFront function in `infra/site/main.tf` maps `/saturn` to `saturn.html`
   and redirects other host names to isotherms.org. Unknown pages get `index.html`
   with a 404. Deploy new pages before pointing the function at them.

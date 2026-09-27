@@ -95,6 +95,16 @@ resource "aws_acm_certificate_validation" "site" {
   validation_record_fqdns = [for r in cloudflare_dns_record.cert_validation : r.name]
 }
 
+# Proves to Google Search Console (a Domain property) that we own the domain.
+resource "cloudflare_dns_record" "google_verification" {
+  zone_id = data.cloudflare_zone.site.id
+  name    = var.domain
+  type    = "TXT"
+  content = "\"google-site-verification=OGYU_SokqANTOevXvb5ouKcWydPNef4MR8vhdAt6t7E\""
+  ttl     = 1
+  comment = "Google Search Console verification (Terraform, infra/site)"
+}
+
 # The domain and www point at CloudFront (Cloudflare flattens the CNAME at
 # the root). After the distribution knows the names, or visitors get errors.
 resource "cloudflare_dns_record" "site" {

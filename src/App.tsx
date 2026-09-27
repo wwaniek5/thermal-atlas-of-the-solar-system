@@ -7,6 +7,7 @@ import { MoonOrbit } from './components/MoonOrbit'
 import { MonthSlider } from './components/MonthSlider'
 import { BODIES, DEFAULT_BODY, type Body } from './bodies'
 import { BodyMenu } from './components/BodyMenu'
+import { SiteFooter } from './components/SiteFooter'
 import {
   DEFAULT_MONTH,
   DEFAULT_STEP_INDEX,
@@ -236,6 +237,7 @@ export default function App() {
             </div>
           </div>
         )}
+        <SiteFooter />
       </main>
     </div>
   )

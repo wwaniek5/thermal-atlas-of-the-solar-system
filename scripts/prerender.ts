@@ -12,7 +12,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Plugin } from 'vite'
 import { BODIES, type Body } from '../src/bodies.ts'
-import { HOME_DESCRIPTION, pageDescription, pageTitle, SITE_NAME, SITE_URL } from '../src/seo.ts'
+import { AUTHOR, HOME_DESCRIPTION, pageDescription, pageTitle, REPO_URL, SITE_NAME, SITE_URL } from '../src/seo.ts'
 
 const esc = (text: string) =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -35,15 +35,18 @@ function menu(selected: string | null): string {
   return `<nav class="body-menu" aria-label="Planets and moons"><ul>${planets.join('')}</ul></nav>`
 }
 
+/** Matches SiteFooter. */
+const footer = `<footer class="site-footer">Made by ${esc(AUTHOR)} · <a href="${REPO_URL}">Source on GitHub</a> · MIT License</footer>`
+
 function bodyContent(body: Body): string {
   const about = body.about
     ? `<section class="about"><h2>About ${esc(body.name)}</h2>${body.about.map((p) => `<p>${esc(p)}</p>`).join('')}</section>`
     : ''
-  return `<div class="layout">${menu(body.id)}<main><header><p class="eyebrow">${esc(SITE_NAME)}</p><h1>${esc(body.name)}</h1><p class="subtitle">${esc(body.quantity ?? '')}</p></header><p>${esc(pageDescription(body))}</p>${about}</main></div>`
+  return `<div class="layout">${menu(body.id)}<main><header><p class="eyebrow">${esc(SITE_NAME)}</p><h1>${esc(body.name)}</h1><p class="subtitle">${esc(body.quantity ?? '')}</p></header><p>${esc(pageDescription(body))}</p>${about}${footer}</main></div>`
 }
 
 function homeContent(): string {
-  return `<div class="layout">${menu(null)}<main><header><h1>${esc(SITE_NAME)}</h1><p class="subtitle">${esc(HOME_DESCRIPTION)}</p></header></main></div>`
+  return `<div class="layout">${menu(null)}<main><header><h1>${esc(SITE_NAME)}</h1><p class="subtitle">${esc(HOME_DESCRIPTION)}</p></header>${footer}</main></div>`
 }
 
 /** index.html with this page's title, description, address and content. */

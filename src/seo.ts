@@ -7,6 +7,8 @@ import type { Body } from './bodies'
  */
 export const SITE_NAME = 'Thermal Atlas of the Solar System'
 export const SITE_URL = 'https://isotherms.org'
+export const AUTHOR = 'Wojciech Waniek'
+export const REPO_URL = 'https://github.com/wwaniek5/ww-isotherms'
 export const HOME_DESCRIPTION =
   'Temperature maps of the planets and the Moon, with isotherms that move through the seasons.'
 

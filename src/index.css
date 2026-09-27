@@ -42,6 +42,22 @@ h1 {
   font-size: 0.8rem;
 }
 
+.site-footer {
+  margin-top: 48px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+}
+
+.site-footer a {
+  color: inherit;
+}
+
+.site-footer a:hover {
+  color: var(--ink-secondary);
+}
+
 .error {
   color: #d03b3b;
 }
