@@ -47,6 +47,9 @@ keeps its own state locally and gitignored; don't re-run it.
 
 ## Gotchas
 
+- Analytics (Cloudflare Web Analytics) is set up in the Cloudflare dashboard,
+  not Terraform; the beacon is added at build time in `vite.config.ts`. See
+  CLAUDE.md, Analytics.
 - Keep `cloudflare_dns_record.google_verification` in `infra/site/main.tf`:
   removing it loses ownership of the Google Search Console property.
 - The sitemap and per-body pages come from `scripts/prerender.ts` at build time,

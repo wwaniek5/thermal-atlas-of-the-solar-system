@@ -33,3 +33,14 @@ npx tsc -b && npx oxlint && npm run build
 
 - Check visual changes in the running app (Chrome), not just tests.
 - Colors: blue ↔ red diverging scale with gray at 0 °C (`src/map/colors.ts`).
+
+## Analytics
+
+- Cloudflare Web Analytics: dashboard → Analytics & Logs → Web Analytics →
+  isotherms.org. Set up there as "Enable with JS Snippet installation"
+  (automatic setup can't work: the DNS records are DNS only, CloudFront serves
+  the site). The beacon is added to production builds by `analytics()` in
+  `vite.config.ts`. Not in Terraform: the API rejects API tokens for Web
+  Analytics sites, whatever the permissions.
+- Search traffic: Google Search Console, property `isotherms.org`. Request
+  counts: AWS CloudFront → Reports & analytics.
