@@ -42,6 +42,8 @@ export interface Body {
   startPosition?: number
   /** A few short paragraphs explaining what the map shows. */
   about?: string[]
+  /** One sentence for search results and link previews (at most about 160 characters). */
+  description?: string
   /** Temperatures don't change over time: no slider or playback, and this heading. */
   staticTitle?: string
   /**
@@ -63,6 +65,7 @@ export const BODIES: Body[] = [
   {
     id: 'mercury',
     name: 'Mercury',
+    description: 'Interactive map of Mercury\'s surface temperature through its 176-day solar day, from about 430 °C at noon to −170 °C at night, from a thermal model.',
     source: 'mercury',
     quantity: 'Surface temperature (thermal model)',
     calendar: 'mercury',
@@ -90,6 +93,7 @@ export const BODIES: Body[] = [
   {
     id: 'venus',
     name: 'Venus',
+    description: 'Interactive map of Venus\'s surface temperature: about 460 °C almost everywhere, cooler only on high mountains like Maxwell Montes. From Magellan topography.',
     source: 'venus',
     quantity: 'Surface temperature (from altitude)',
     staticTitle: 'Always about the same',
@@ -117,6 +121,7 @@ export const BODIES: Body[] = [
   {
     id: 'earth',
     name: 'Earth',
+    description: 'Interactive globe of Earth\'s average surface air temperature for every month, with isotherms that move through the seasons. ERA5 data, 1991–2020.',
     source: DATA_SOURCE,
     quantity: 'Average surface air temperature',
     calendar: 'earth',
@@ -127,6 +132,7 @@ export const BODIES: Body[] = [
   {
     id: 'moon',
     name: 'Moon',
+    description: 'Interactive map of the Moon\'s surface temperature through a lunar day, from about 110 °C at noon to −175 °C before dawn, from a thermal model.',
     parent: 'earth',
     source: 'moon',
     quantity: 'Surface temperature (thermal model)',
@@ -162,6 +168,7 @@ export const BODIES: Body[] = [
   {
     id: 'mars',
     name: 'Mars',
+    description: 'Interactive map of the average surface temperature on Mars through its seasons, month by Martian month, from the NASA Ames Mars climate model.',
     source: 'mars',
     quantity: 'Average surface temperature, day and night',
     calendar: 'mars',
@@ -188,6 +195,7 @@ export const BODIES: Body[] = [
   {
     id: 'jupiter',
     name: 'Jupiter',
+    description: 'Temperature map of Jupiter\'s upper atmosphere from ESO\'s Very Large Telescope: warm belts, cool zones and the cold Great Red Spot.',
     source: 'jupiter',
     quantity: 'Temperature high in the atmosphere (infrared, VLT telescope)',
     staticTitle: '24–27 May 2018',
@@ -213,6 +221,7 @@ export const BODIES: Body[] = [
   {
     id: 'saturn',
     name: 'Saturn',
+    description: 'Saturn\'s upper-atmosphere temperatures from the Cassini spacecraft, 2007–2017: watch the seasons move from southern summer towards northern summer.',
     source: 'saturn',
     quantity: 'Temperature at 100 mbar (Cassini spacecraft)',
     calendar: 'saturn',
@@ -238,6 +247,7 @@ export const BODIES: Body[] = [
   {
     id: 'uranus',
     name: 'Uranus',
+    description: 'Temperature map of Uranus\'s upper atmosphere from Voyager 2: the coldest planet, with a warm equator and poles and cool mid-latitudes.',
     source: 'uranus',
     quantity: 'Temperature at 100 mbar (Voyager 2)',
     staticTitle: 'January 1986',
@@ -261,6 +271,7 @@ export const BODIES: Body[] = [
   {
     id: 'neptune',
     name: 'Neptune',
+    description: 'Temperature map of Neptune\'s upper atmosphere from Voyager 2\'s 1989 flyby: a warm equator and south pole, and colder mid-latitudes.',
     source: 'neptune',
     quantity: 'Temperature at 100 mbar (Voyager 2)',
     staticTitle: 'August 1989',

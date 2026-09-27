@@ -15,7 +15,6 @@ import {
   DETAIL_POINTS_PLAYING,
   DETAIL_POINTS_STILL,
   PLAY_MONTHS_PER_SECOND,
-  SITE_NAME,
 } from './config'
 import { gridAt, loadSource, type Grid, type LoadedSource } from './data/grid'
 import { useRegion } from './data/useRegion'
@@ -24,6 +23,7 @@ import { useIsotherms } from './map/useIsotherms'
 import { buildScale, STEP_OPTIONS, type Units } from './map/scale'
 import { CALENDARS } from './months'
 import { bodyFromPath, useBodyRoute } from './routing'
+import { pageTitle, SITE_NAME } from './seo'
 
 const bodyById = (id: string): Body => BODIES.find((b) => b.id === id)!
 
@@ -51,10 +51,11 @@ export default function App() {
     setStepIndex(next.stepIndex ?? DEFAULT_STEP_INDEX)
   })
   const body = bodyById(bodyId)
-  // Home keeps the site's name, so a shared link reads as the site; body pages name the body.
+  // Home keeps the site's name, so a shared link reads as the site; body pages
+  // name the body, as their prerendered HTML does (seo.ts).
   useEffect(() => {
-    document.title = home ? SITE_NAME : `${body.name} · Thermal Atlas`
-  }, [home, body.name])
+    document.title = home ? SITE_NAME : pageTitle(body)
+  }, [home, body])
   const dataSource = body.source!
   const calendar = CALENDARS[body.calendar ?? 'earth']
   const stepOptions = body.stepOptions ?? STEP_OPTIONS

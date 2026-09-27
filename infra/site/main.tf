@@ -158,8 +158,13 @@ resource "aws_cloudfront_function" "routes" {
           headers: { location: { value: 'https://${var.domain}' + request.uri } },
         };
       }
-      var last = request.uri.split('/').pop();
-      if (last.indexOf('.') === -1) request.uri = '/index.html';
+      // Pages: / is index.html, /saturn is saturn.html (written per body by
+      // scripts/prerender.ts). Other paths are files. Unknown pages get
+      // index.html with a 404 (custom_error_response below).
+      var uri = request.uri.replace(/\/+$/, '');
+      var last = uri.split('/').pop();
+      if (uri === '') request.uri = '/index.html';
+      else if (last.indexOf('.') === -1) request.uri = uri.toLowerCase() + '.html';
       return request;
     }
   EOT
@@ -197,6 +202,19 @@ resource "aws_cloudfront_distribution" "site" {
     function_association {
       event_type   = "viewer-request"
       function_arn = aws_cloudfront_function.routes.arn
+    }
+  }
+
+  # A missing file or unknown page (S3 answers 403: CloudFront may not list
+  # the bucket) gets the home page, which sends the visitor to /, as a 404
+  # so search engines don't index it.
+  dynamic "custom_error_response" {
+    for_each = [403, 404]
+    content {
+      error_code            = custom_error_response.value
+      response_code         = 404
+      response_page_path    = "/index.html"
+      error_caching_min_ttl = 60
     }
   }
 
