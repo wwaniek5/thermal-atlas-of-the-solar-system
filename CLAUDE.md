@@ -22,6 +22,9 @@ npx tsc -b && npx oxlint && npm run build
   `isotherms.test.ts` cover past bugs, so keep them passing.
 - `src/data/tiles.ts`, `src/data/useRegion.ts`, `src/map/view.ts`: zoom detail.
   The finest tile level that fits a point budget is loaded for what's on screen.
+- `src/seo.ts`, `scripts/prerender.ts`: page titles and descriptions; the build
+  writes a static page per body (`dist/<id>.html`), `sitemap.xml` and `robots.txt`.
+  A body needs a `description` in `bodies.ts`.
 - `scripts/data/`: Python pipeline that writes `public/data/<source>/`
   (see the `prepare-climate-data` skill).
 - `infra/`: Terraform for S3 + CloudFront hosting (see the `deploy-site` skill).

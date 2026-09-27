@@ -17,8 +17,9 @@ in AWS Certificate Manager (us-east-1). Get the URL with
 scripts/deploy.sh
 ```
 
-This builds and uploads with cache headers: `assets/` and the versioned data
-folders (`data/<source>/<hash>/`) are cached forever; `index.html` and the data
+This builds (including a static page per body, see `scripts/prerender.ts`)
+and uploads with cache headers: `assets/` and the versioned data
+folders (`data/<source>/<hash>/`) are cached forever; the HTML pages and the data
 manifests are re-checked on every visit, so no CloudFront invalidation is
 needed. Afterwards, check the live URL loads with no console errors.
 
@@ -45,6 +46,10 @@ State lives in the S3 bucket created once by `infra/bootstrap`. That config
 keeps its own state locally and gitignored; don't re-run it.
 
 ## Gotchas
+
+- The CloudFront function in `infra/site/main.tf` maps `/saturn` to `saturn.html`
+  and redirects other host names to isotherms.org. Unknown pages get `index.html`
+  with a 404. Deploy new pages before pointing the function at them.
 
 - Credentials need the actions in `infra/iam/deploy-policy.json` (plus read access).
 - Pushing the ~34 MB of data over HTTPS needs `git config http.postBuffer 157286400`.
