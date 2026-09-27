@@ -400,9 +400,12 @@ h1 {
   padding-right: 0;
 }
 
-/* The globe is as large as the window allows, but never taller than it. */
+/* The globe is as large as the window allows, but leaves room below it for
+   the header and the time slider, so the slider is always in view. svh: the
+   height with a phone's browser bars shown. */
 .globe {
-  width: min(100%, calc(100vh - 140px));
+  width: min(100%, calc(100vh - 210px));
+  width: min(100%, calc(100svh - 210px));
   margin-left: auto;
   margin-right: auto;
 }
@@ -553,6 +556,39 @@ h1 {
   .body-menu .moon .unavailable {
     border-color: transparent;
     background: none;
+  }
+
+  /* A planet and its moons share one chip, split by a thin line. */
+  .body-menu .has-moons {
+    display: flex;
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .body-menu .has-moons a,
+  .body-menu .has-moons .unavailable {
+    padding: 6px 12px;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+
+  /* Not the chip row's spacing: that rule matches this nested list too. */
+  .body-menu .moons {
+    display: flex;
+    gap: 0;
+    width: auto;
+    padding: 0;
+  }
+
+  .body-menu .moons li {
+    border-left: 1px solid var(--hairline);
+  }
+
+  .body-menu .has-moons a[aria-current='page'] {
+    background: var(--ink);
   }
 }
 
@@ -716,8 +752,13 @@ h1 {
 
 .orbit-stage > svg {
   cursor: pointer;
-  touch-action: none;
+  /* Swipes scroll the page, except from the planet (see orbitTouch.ts). */
+  touch-action: pan-y;
   user-select: none;
+}
+
+.orbit-hit {
+  fill: transparent;
 }
 
 .orbit-handle {

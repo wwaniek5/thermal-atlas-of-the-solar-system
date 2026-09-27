@@ -1,5 +1,6 @@
 import { useRef, type KeyboardEvent, type PointerEvent } from 'react'
 import { moonAngle, moonDayAt, positionAtMoonAngle } from '../moon'
+import { startsDrag, useScrollUnlessOnHandle } from './orbitTouch'
 import { PlayButton } from './PlayButton'
 import { Swatch } from './Swatch'
 
@@ -18,6 +19,8 @@ const HEIGHT = 190
 const EARTH = { x: WIDTH / 2 + 20, y: HEIGHT / 2, r: 12 }
 /** Not to scale: the real Moon is 30 Earth widths away. */
 const ORBIT_R = 70
+/** Touch target radius around the planet, in viewBox units. */
+const HIT_R = 24
 const MOON_R = 9
 /** Arrow keys move the Moon by this much of the 12 steps. */
 const KEY_STEP = 0.25
@@ -45,7 +48,9 @@ export function MoonOrbit({ position, describe, onChange, playing, onTogglePlay 
     const py = ((e.clientY - box.top) / box.height) * HEIGHT
     onChange(positionAtMoonAngle(Math.atan2(EARTH.y - py, px - EARTH.x)))
   }
+  useScrollUnlessOnHandle(svgRef)
   const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
+    if (!startsDrag(e)) return
     e.currentTarget.setPointerCapture(e.pointerId)
     dragging.current = true
     moveTo(e)
@@ -125,6 +130,8 @@ export function MoonOrbit({ position, describe, onChange, playing, onTogglePlay 
               aria-valuetext={describe(position)}
               onKeyDown={onKeyDown}
             >
+              {/* Invisible, finger-sized: on touch screens only drags from here move it. */}
+              <circle cx={x} cy={y} r={HIT_R} className="orbit-hit" />
               <circle cx={x} cy={y} r={MOON_R} className="orbit-planet" />
               <circle cx={x} cy={y} r={3} className="pole" />
               <circle cx={marker.x} cy={marker.y} r={3} className="marker" />

@@ -1,5 +1,6 @@
 import { useRef, type KeyboardEvent, type PointerEvent } from 'react'
 import { dayAt, ECCENTRICITY, facingAngle, orbitPosition, positionAtAnomaly, SEMI_MAJOR_AU } from '../mercury'
+import { startsDrag, useScrollUnlessOnHandle } from './orbitTouch'
 import { PlayButton } from './PlayButton'
 import { Swatch } from './Swatch'
 
@@ -23,6 +24,8 @@ const HEIGHT = 190
 const S = 190
 /** At a focus, so the orbit is centred horizontally. */
 const SUN = { x: WIDTH / 2 + ECCENTRICITY * SEMI_MAJOR_AU * S, y: HEIGHT / 2 }
+/** Touch target radius around the planet, in viewBox units. */
+const HIT_R = 24
 const PLANET_R = 11
 
 /**
@@ -59,7 +62,9 @@ export function MercuryOrbit({ position, describe, onChange, playing, onTogglePl
     const py = ((e.clientY - box.top) / box.height) * HEIGHT
     onChange(positionAtAnomaly(Math.atan2(SUN.y - py, px - SUN.x), position))
   }
+  useScrollUnlessOnHandle(svgRef)
   const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
+    if (!startsDrag(e)) return
     e.currentTarget.setPointerCapture(e.pointerId)
     dragging.current = true
     moveTo(e)
@@ -120,6 +125,8 @@ export function MercuryOrbit({ position, describe, onChange, playing, onTogglePl
               aria-valuetext={describe(position)}
               onKeyDown={onKeyDown}
             >
+              {/* Invisible, finger-sized: on touch screens only drags from here move it. */}
+              <circle cx={x} cy={y} r={HIT_R} className="orbit-hit" />
               <circle cx={x} cy={y} r={PLANET_R} className="orbit-planet" />
               <circle cx={x} cy={y} r={3.5} className="pole" />
               <circle cx={marker.x} cy={marker.y} r={3.5} className="marker" />
