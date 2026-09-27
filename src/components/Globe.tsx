@@ -153,6 +153,33 @@ export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewC
     return [((clientX - box.left) / box.width) * SIZE, ((clientY - box.top) / box.height) * SIZE]
   }
 
+  // The latest projection, for the touch listener below.
+  const projectionRef = useRef(projection)
+  useEffect(() => {
+    projectionRef.current = projection
+  }, [projection])
+
+  /** Whether a point on screen is on the globe, not in the square's corners around it. */
+  const onSphere = (clientX: number, clientY: number): boolean => {
+    const [x, y] = toSvg(clientX, clientY)
+    const [cx, cy] = projectionRef.current.translate()
+    return Math.hypot(x - cx, y - cy) <= projectionRef.current.scale()
+  }
+
+  // Touches rotate and pinch the globe only if they start on it (or join a
+  // gesture already under way); elsewhere they scroll the page (CSS
+  // touch-action: pan-y). Stopping the scroll needs a non-passive listener,
+  // which React's onTouchStart is not. pointerdown comes first and records
+  // the touches that belong to the globe.
+  useEffect(() => {
+    const svg = svgRef.current!
+    const onTouchStart = (e: TouchEvent) => {
+      if (pointers.current.size > 0) e.preventDefault()
+    }
+    svg.addEventListener('touchstart', onTouchStart, { passive: false })
+    return () => svg.removeEventListener('touchstart', onTouchStart)
+  }, [])
+
   // One pointer drags to rotate; two pointers pinch to zoom.
   const startGesture = () => {
     const [a, b] = [...pointers.current.values()]
@@ -165,6 +192,8 @@ export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewC
   }
 
   const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
+    // A finger in the corners around the globe scrolls the page instead. (A mouse drags from anywhere.)
+    if (e.pointerType === 'touch' && pointers.current.size === 0 && !onSphere(e.clientX, e.clientY)) return
     e.currentTarget.setPointerCapture(e.pointerId)
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     startGesture()

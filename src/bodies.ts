@@ -132,8 +132,9 @@ export const BODIES: Body[] = [
     quantity: 'Surface temperature (thermal model)',
     calendar: 'moon',
     orbitDiagram: 'moon',
-    // First quarter: sunrise runs down the middle of the near side.
-    startPosition: 3,
+    // Last quarter: the Moon is at the top of the orbit diagram, in view on
+    // phones, and sunset runs down the middle of the near side.
+    startPosition: 9,
     // Centred between the near side's middle (0°) and the noon spot (90°E), level with the equator.
     view: { rotation: [-45, 0], zoom: 1 },
     // About −200 to +120 °C.

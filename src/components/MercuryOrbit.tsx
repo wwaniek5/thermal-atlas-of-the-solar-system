@@ -1,6 +1,6 @@
-import { useRef, type KeyboardEvent, type PointerEvent } from 'react'
+import { useRef, type KeyboardEvent } from 'react'
 import { dayAt, ECCENTRICITY, facingAngle, orbitPosition, positionAtAnomaly, SEMI_MAJOR_AU } from '../mercury'
-import { startsDrag, useScrollUnlessOnHandle } from './orbitTouch'
+import { useOrbitPointer } from './orbitTouch'
 import { PlayButton } from './PlayButton'
 import { Swatch } from './Swatch'
 
@@ -38,7 +38,6 @@ const PLANET_R = 11
  */
 export function MercuryOrbit({ position, describe, onChange, playing, onTogglePlay }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
-  const dragging = useRef(false)
   const days = dayAt(position)
   const { trueAnomaly, distance } = orbitPosition(days)
   // Perihelion to the right of the Sun; counter-clockwise, as seen from the north.
@@ -56,25 +55,13 @@ export function MercuryOrbit({ position, describe, onChange, playing, onTogglePl
   const aphelion = SUN.x - SEMI_MAJOR_AU * (1 + ECCENTRICITY) * S
 
   // Pointer -> angle around the Sun -> time.
-  const moveTo = (e: PointerEvent) => {
+  const moveTo = (clientX: number, clientY: number) => {
     const box = svgRef.current!.getBoundingClientRect()
-    const px = ((e.clientX - box.left) / box.width) * WIDTH
-    const py = ((e.clientY - box.top) / box.height) * HEIGHT
+    const px = ((clientX - box.left) / box.width) * WIDTH
+    const py = ((clientY - box.top) / box.height) * HEIGHT
     onChange(positionAtAnomaly(Math.atan2(SUN.y - py, px - SUN.x), position))
   }
-  useScrollUnlessOnHandle(svgRef)
-  const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
-    if (!startsDrag(e)) return
-    e.currentTarget.setPointerCapture(e.pointerId)
-    dragging.current = true
-    moveTo(e)
-  }
-  const onPointerMove = (e: PointerEvent<SVGSVGElement>) => {
-    if (dragging.current) moveTo(e)
-  }
-  const onPointerUp = () => {
-    dragging.current = false
-  }
+  const { handlers, used } = useOrbitPointer(svgRef, moveTo)
   const onKeyDown = (e: KeyboardEvent) => {
     const delta = { ArrowRight: KEY_STEP, ArrowUp: KEY_STEP, ArrowLeft: -KEY_STEP, ArrowDown: -KEY_STEP }[e.key]
     if (delta === undefined) return
@@ -89,11 +76,8 @@ export function MercuryOrbit({ position, describe, onChange, playing, onTogglePl
           <svg
             ref={svgRef}
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-            aria-label={`Mercury's orbit seen from above its north pole: ${distance.toFixed(2)} AU from the Sun. Drag Mercury to move it.`}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
+            aria-label={`Mercury's orbit seen from above its north pole: ${distance.toFixed(2)} AU from the Sun. Drag Mercury or tap its orbit to move it.`}
+            {...handlers}
           >
             <ellipse cx={cx} cy={SUN.y} rx={a} ry={b} className="orbit-path" />
             <line x1={SUN.x} y1={SUN.y} x2={x} y2={y} className="orbit-ray" />
@@ -126,7 +110,7 @@ export function MercuryOrbit({ position, describe, onChange, playing, onTogglePl
               onKeyDown={onKeyDown}
             >
               {/* Invisible, finger-sized: on touch screens only drags from here move it. */}
-              <circle cx={x} cy={y} r={HIT_R} className="orbit-hit" />
+              <circle cx={x} cy={y} r={HIT_R} className={used || playing ? 'orbit-hit' : 'orbit-hit orbit-hint'} />
               <circle cx={x} cy={y} r={PLANET_R} className="orbit-planet" />
               <circle cx={x} cy={y} r={3.5} className="pole" />
               <circle cx={marker.x} cy={marker.y} r={3.5} className="marker" />
@@ -139,9 +123,9 @@ export function MercuryOrbit({ position, describe, onChange, playing, onTogglePl
           <span>{describe(position)}</span>
         </div>
         <figcaption>
-          Seen from above, {distance.toFixed(2)} AU from the Sun.{' '}
-          <Swatch className="pole" /> North pole, facing you. <Swatch className="marker" /> The spot at 0° on
-          the globe: it turns with Mercury, 3 turns for every 2 orbits. Drag Mercury to move it.
+          Drag Mercury or tap anywhere on its orbit to move it. <Swatch className="pole" /> North pole, facing
+          you. <Swatch className="marker" /> The spot at 0° on the globe: it turns with Mercury, 3 turns for every
+          2 orbits.
         </figcaption>
       </figure>
     </div>

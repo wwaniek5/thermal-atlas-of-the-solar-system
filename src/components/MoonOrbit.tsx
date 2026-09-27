@@ -1,6 +1,6 @@
-import { useRef, type KeyboardEvent, type PointerEvent } from 'react'
+import { useRef, type KeyboardEvent } from 'react'
 import { moonAngle, moonDayAt, positionAtMoonAngle } from '../moon'
-import { startsDrag, useScrollUnlessOnHandle } from './orbitTouch'
+import { useOrbitPointer } from './orbitTouch'
 import { PlayButton } from './PlayButton'
 import { Swatch } from './Swatch'
 
@@ -29,11 +29,10 @@ const KEY_STEP = 0.25
  * The Moon going round Earth, seen from above the north, with sunlight
  * coming from the left. The Moon's 0° longitude always faces Earth, so the
  * purple marker points at Earth all the way round, while the Sun moves
- * across the Moon's sky once per orbit. Drag the Moon to move it.
+ * across the Moon's sky once per orbit. Drag the Moon or tap its orbit to move it.
  */
 export function MoonOrbit({ position, describe, onChange, playing, onTogglePlay }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
-  const dragging = useRef(false)
 
   const angle = moonAngle(moonDayAt(position))
   const x = EARTH.x + ORBIT_R * Math.cos(angle)
@@ -42,25 +41,13 @@ export function MoonOrbit({ position, describe, onChange, playing, onTogglePlay 
   const toEarth = Math.atan2(EARTH.y - y, EARTH.x - x)
   const marker = { x: x + MOON_R * Math.cos(toEarth), y: y + MOON_R * Math.sin(toEarth) }
 
-  const moveTo = (e: PointerEvent) => {
+  const moveTo = (clientX: number, clientY: number) => {
     const box = svgRef.current!.getBoundingClientRect()
-    const px = ((e.clientX - box.left) / box.width) * WIDTH
-    const py = ((e.clientY - box.top) / box.height) * HEIGHT
+    const px = ((clientX - box.left) / box.width) * WIDTH
+    const py = ((clientY - box.top) / box.height) * HEIGHT
     onChange(positionAtMoonAngle(Math.atan2(EARTH.y - py, px - EARTH.x)))
   }
-  useScrollUnlessOnHandle(svgRef)
-  const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
-    if (!startsDrag(e)) return
-    e.currentTarget.setPointerCapture(e.pointerId)
-    dragging.current = true
-    moveTo(e)
-  }
-  const onPointerMove = (e: PointerEvent<SVGSVGElement>) => {
-    if (dragging.current) moveTo(e)
-  }
-  const onPointerUp = () => {
-    dragging.current = false
-  }
+  const { handlers, used } = useOrbitPointer(svgRef, moveTo)
   const onKeyDown = (e: KeyboardEvent) => {
     const delta = { ArrowRight: KEY_STEP, ArrowUp: KEY_STEP, ArrowLeft: -KEY_STEP, ArrowDown: -KEY_STEP }[e.key]
     if (delta === undefined) return
@@ -88,11 +75,8 @@ export function MoonOrbit({ position, describe, onChange, playing, onTogglePlay 
           <svg
             ref={svgRef}
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-            aria-label="The Moon's orbit around Earth, seen from above, with sunlight from the left. Drag the Moon to move it."
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
+            aria-label="The Moon's orbit around Earth, seen from above, with sunlight from the left. Drag the Moon or tap its orbit to move it."
+            {...handlers}
           >
             {/* Sunlight from the left. */}
             {[-40, 0, 40].map((dy) => (
@@ -131,7 +115,7 @@ export function MoonOrbit({ position, describe, onChange, playing, onTogglePlay 
               onKeyDown={onKeyDown}
             >
               {/* Invisible, finger-sized: on touch screens only drags from here move it. */}
-              <circle cx={x} cy={y} r={HIT_R} className="orbit-hit" />
+              <circle cx={x} cy={y} r={HIT_R} className={used || playing ? 'orbit-hit' : 'orbit-hit orbit-hint'} />
               <circle cx={x} cy={y} r={MOON_R} className="orbit-planet" />
               <circle cx={x} cy={y} r={3} className="pole" />
               <circle cx={marker.x} cy={marker.y} r={3} className="marker" />
@@ -143,8 +127,8 @@ export function MoonOrbit({ position, describe, onChange, playing, onTogglePlay 
           <span>{describe(position)}</span>
         </div>
         <figcaption>
-          Seen from above, not to scale. <Swatch className="pole" /> North pole, facing you.{' '}
-          <Swatch className="marker" /> The spot at 0° on the globe: it always faces Earth. Drag the Moon to move it.
+          Drag the Moon or tap anywhere on its orbit to move it. <Swatch className="pole" /> North pole, facing
+          you. <Swatch className="marker" /> The spot at 0° on the globe: it always faces Earth.
         </figcaption>
       </figure>
     </div>
