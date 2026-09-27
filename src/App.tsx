@@ -19,8 +19,8 @@ import {
 import { gridAt, loadSource, type Grid, type LoadedSource } from './data/grid'
 import { useRegion } from './data/useRegion'
 import { computeIsotherms } from './map/isotherms'
-import { useIsotherms } from './map/useIsotherms'
-import { buildScale, STEP_OPTIONS, type Units } from './map/scale'
+import { useIsotherms, type Layer } from './map/useIsotherms'
+import { buildScale, STEP_OPTIONS, type TemperatureScale, type Units } from './map/scale'
 import { CALENDARS } from './months'
 import { bodyFromPath, useBodyRoute } from './routing'
 import { pageTitle, SITE_NAME } from './seo'
@@ -121,9 +121,19 @@ export default function App() {
   // while there is no detail.
   const globeLayer = useIsotherms(grid, scale.thresholdsC)
   const detail = useIsotherms(region, scale.thresholdsC)
-  const globe = globeLayer ?? (grid ? { grid, isotherms: [], thresholds: scale.thresholdsC } : null)
   // Still drawing: the first isotherms, or zoom detail (tiles or isotherms) not in yet.
   const drawing = !globeLayer || regionLoading || (region !== null && !detail)
+
+  // What the globe shows. A globe without isotherms would be one flat colour,
+  // so until this body's first isotherms arrive the placeholder stays up.
+  // After a change of units or spacing, the previous isotherms stay, with the
+  // scale they were drawn for, until the new ones are ready. (Kept by
+  // updating state during render: React's pattern for remembering a value.)
+  const [drawn, setDrawn] = useState<{ layer: Layer; scale: TemperatureScale; bodyId: string } | null>(null)
+  if (globeLayer && drawn?.layer !== globeLayer) setDrawn({ layer: globeLayer, scale, bodyId })
+  const previous = !globeLayer && drawn?.bodyId === bodyId ? drawn : null
+  const globe = globeLayer ?? previous?.layer ?? null
+  const globeScale = globeLayer ? scale : (previous?.scale ?? scale)
 
   const basemap = useMemo(() => makeBasemap(body, source?.terrain ?? null), [body, source])
 
@@ -146,7 +156,7 @@ export default function App() {
               <div className="placeholder-disc" />
               <p className="placeholder-text">
                 <span className="spinner" aria-hidden="true" />
-                Loading temperatures…
+                {source ? 'Drawing isotherms…' : 'Loading temperatures…'}
               </p>
             </div>
           </div>
@@ -156,8 +166,9 @@ export default function App() {
           <div className="content">
             <Globe
               globe={globe}
-              detail={detail}
-              scale={scale}
+              // Detail is drawn for the current scale; skip it while the globe shows the previous one.
+              detail={globeLayer ? detail : null}
+              scale={globeScale}
               basemap={basemap}
               showLabels={!playing}
               view={view}
