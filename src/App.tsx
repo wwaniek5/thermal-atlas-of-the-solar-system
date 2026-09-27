@@ -81,7 +81,7 @@ export default function App() {
 
   // Zoomed in: detail for what's on screen, from tiles.
   const budget = (playing ? DETAIL_POINTS_PLAYING : DETAIL_POINTS_STILL) * (body.detailScale ?? 1)
-  const region = useRegion(dataSource, source?.pyramid ?? null, view, position, budget)
+  const { grid: region, loading: regionLoading } = useRegion(dataSource, source?.pyramid ?? null, view, position, budget)
 
   // Whole globe: the coarsest level while playing or as the background behind
   // the detail (to keep frames fast), the finest when still.
@@ -116,6 +116,8 @@ export default function App() {
   const globeLayer = useIsotherms(grid, scale.thresholdsC)
   const detail = useIsotherms(region, scale.thresholdsC)
   const globe = globeLayer ?? (grid ? { grid, isotherms: [], thresholds: scale.thresholdsC } : null)
+  // Still drawing: the first isotherms, or zoom detail (tiles or isotherms) not in yet.
+  const drawing = !globeLayer || regionLoading || (region !== null && !detail)
 
   const basemap = useMemo(() => makeBasemap(body, source?.terrain ?? null), [body, source])
 
@@ -131,7 +133,18 @@ export default function App() {
           </p>
         </header>
         {error && <p className="error">Could not load data: {error}</p>}
-        {!globe && !error && <p className="loading">Loading…</p>}
+        {!globe && !error && (
+          // The globe's place, so the page doesn't jump when it arrives.
+          <div className="content">
+            <div className="globe globe-placeholder" role="status">
+              <div className="placeholder-disc" />
+              <p className="placeholder-text">
+                <span className="spinner" aria-hidden="true" />
+                Loading temperatures…
+              </p>
+            </div>
+          </div>
+        )}
         {globe && (
           // Wide screens: globe on the left, everything else in a column on the right.
           <div className="content">
@@ -144,6 +157,7 @@ export default function App() {
               view={view}
               onViewChange={setView}
               unmeasuredNorthOf={body.unmeasuredNorthOf}
+              busy={drawing}
             />
             <div className="panel">
               {/* Bodies whose temperatures don't change get no time control. */}

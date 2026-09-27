@@ -64,6 +64,8 @@ interface Props {
   onViewChange: Dispatch<SetStateAction<View>>
   /** Latitudes north of this have no data: covered in gray, without labels or temperatures. */
   unmeasuredNorthOf?: number
+  /** Isotherms or zoom detail still on their way: shows a small badge. */
+  busy?: boolean
 }
 
 interface Hover {
@@ -75,7 +77,7 @@ interface Hover {
   celsius: number | null
 }
 
-export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewChange, unmeasuredNorthOf }: Props) {
+export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewChange, unmeasuredNorthOf, busy }: Props) {
   const [hover, setHover] = useState<Hover | null>(null)
   // While dragging or pinching, draw the light outlines to keep frames fast.
   const [interacting, setInteracting] = useState(false)
@@ -324,6 +326,12 @@ export function Globe({ globe, detail, scale, basemap, showLabels, view, onViewC
           <strong>{hover.celsius === null ? 'Not measured' : formatTemperature(hover.celsius, scale.units)}</strong>
           <span>{formatLonLat(hover.lon, hover.lat)}</span>
         </div>
+      )}
+      {busy && (
+        <p className="globe-busy" role="status">
+          <span className="spinner" aria-hidden="true" />
+          Drawing…
+        </p>
       )}
       <div className="zoom-buttons">
         <button type="button" onClick={() => zoomBy(ZOOM_STEP)} disabled={view.zoom >= MAX_ZOOM} aria-label="Zoom in">
