@@ -42,5 +42,9 @@ npx tsc -b && npx oxlint && npm run build
   the site). The beacon is added to production builds by `analytics()` in
   `vite.config.ts`. Not in Terraform: the API rejects API tokens for Web
   Analytics sites, whatever the permissions.
+- Read the stats with `python3 scripts/analytics.py [days]` (page views,
+  visits, pages, countries, referrers, devices). It uses Cloudflare's GraphQL
+  Analytics API, which the token can read (Account Analytics Read), unlike the
+  Web Analytics site endpoints.
 - Search traffic: Google Search Console, property `isotherms.org`. Request
   counts: AWS CloudFront → Reports & analytics.
