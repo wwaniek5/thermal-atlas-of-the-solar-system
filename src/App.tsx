@@ -15,6 +15,7 @@ import {
   DETAIL_POINTS_PLAYING,
   DETAIL_POINTS_STILL,
   PLAY_MONTHS_PER_SECOND,
+  SITE_NAME,
 } from './config'
 import { gridAt, loadSource, type Grid, type LoadedSource } from './data/grid'
 import { useRegion } from './data/useRegion'
@@ -40,7 +41,7 @@ export default function App() {
 
   // Each body has its own page (/earth, /mars); switching starts it afresh
   // with that body's own view and line spacing.
-  const [bodyId, navigate] = useBodyRoute((id) => {
+  const [bodyId, navigate, home] = useBodyRoute((id) => {
     const next = bodyById(id)
     setSource(null)
     setError(null)
@@ -50,10 +51,10 @@ export default function App() {
     setStepIndex(next.stepIndex ?? DEFAULT_STEP_INDEX)
   })
   const body = bodyById(bodyId)
-  // The tab shows the body; the full site name is in index.html (search results, link previews).
+  // Home keeps the site's name, so a shared link reads as the site; body pages name the body.
   useEffect(() => {
-    document.title = `${body.name} · Thermal Atlas`
-  }, [body.name])
+    document.title = home ? SITE_NAME : `${body.name} · Thermal Atlas`
+  }, [home, body.name])
   const dataSource = body.source!
   const calendar = CALENDARS[body.calendar ?? 'earth']
   const stepOptions = body.stepOptions ?? STEP_OPTIONS

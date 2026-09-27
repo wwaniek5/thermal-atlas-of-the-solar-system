@@ -13,22 +13,29 @@ export function bodyFromPath(pathname: string): string | null {
 }
 
 /**
- * The body in the URL. Other paths, including /, are replaced with the
- * default body's path. `onChange` gets the new body whenever it changes, by
- * navigating or by the browser's back/forward buttons.
+ * The body in the URL, and whether this is the home page (/), which shows the
+ * default body but keeps its own address, so a shared link is to the site.
+ * Unknown paths are replaced with /. `onChange` gets the new body whenever it
+ * changes, by navigating or by the browser's back/forward buttons.
  */
-export function useBodyRoute(onChange: (bodyId: string) => void): [string, (bodyId: string) => void] {
+export function useBodyRoute(
+  onChange: (bodyId: string) => void,
+): [bodyId: string, navigate: (bodyId: string) => void, home: boolean] {
   const [bodyId, setBodyId] = useState(() => bodyFromPath(location.pathname) ?? DEFAULT_BODY)
+  const [home, setHome] = useState(() => bodyFromPath(location.pathname) === null)
   const onChangeRef = useRef(onChange)
   useEffect(() => {
     onChangeRef.current = onChange
   })
 
   useEffect(() => {
-    if (location.pathname !== pathFor(bodyId)) history.replaceState(null, '', pathFor(bodyId))
+    const root = import.meta.env.BASE_URL
+    if (bodyFromPath(location.pathname) === null && location.pathname !== root) history.replaceState(null, '', root)
     const onPopState = () => {
-      const id = bodyFromPath(location.pathname) ?? DEFAULT_BODY
+      const named = bodyFromPath(location.pathname)
+      const id = named ?? DEFAULT_BODY
       setBodyId(id)
+      setHome(named === null)
       onChangeRef.current(id)
     }
     window.addEventListener('popstate', onPopState)
@@ -38,10 +45,12 @@ export function useBodyRoute(onChange: (bodyId: string) => void): [string, (body
   }, [])
 
   const navigate = (id: string) => {
-    if (id === bodyId) return
+    if (id === bodyId && !home) return
     history.pushState(null, '', pathFor(id))
+    setHome(false)
+    if (id === bodyId) return // from home to the same body's own page: nothing else changes
     setBodyId(id)
     onChangeRef.current(id)
   }
-  return [bodyId, navigate]
+  return [bodyId, navigate, home]
 }

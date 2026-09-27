@@ -7,6 +7,9 @@ import type { View } from './map/view'
  *   'noaa' - NCEP/NCAR Reanalysis 1, ~1.9° (format 1)
  *   'era5' - ERA5, 0.25° resolution pyramid; the globe view uses its 1° level (format 2)
  */
+/** Shown on the home page's tab, in search results and in link previews (also in index.html). */
+export const SITE_NAME = 'Thermal Atlas of the Solar System'
+
 export const DATA_SOURCE: 'noaa' | 'era5' = 'era5'
 
 export const DEFAULT_UNITS: Units = 'C'
