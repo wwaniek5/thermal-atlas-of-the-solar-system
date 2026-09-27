@@ -1,7 +1,8 @@
-# Isotherm Globe
+# Thermal Atlas of the Solar System
 
-React + TypeScript (Vite) site showing monthly average temperature isotherms
-on a D3 orthographic globe, with a month slider and zoom.
+https://isotherms.org. React + TypeScript (Vite) site showing temperature isotherms of
+the planets and the Moon on a D3 orthographic globe, with a time slider (or orbit
+diagram) and zoom. One page per body (`src/bodies.ts`).
 
 ## Commands
 

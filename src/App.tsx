@@ -50,6 +50,10 @@ export default function App() {
     setStepIndex(next.stepIndex ?? DEFAULT_STEP_INDEX)
   })
   const body = bodyById(bodyId)
+  // The tab shows the body; the full site name is in index.html (search results, link previews).
+  useEffect(() => {
+    document.title = `${body.name} · Thermal Atlas`
+  }, [body.name])
   const dataSource = body.source!
   const calendar = CALENDARS[body.calendar ?? 'earth']
   const stepOptions = body.stepOptions ?? STEP_OPTIONS

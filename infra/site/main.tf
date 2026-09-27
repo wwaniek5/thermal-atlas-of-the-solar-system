@@ -149,8 +149,9 @@ resource "aws_cloudfront_function" "routes" {
   code    = <<-EOT
     function handler(event) {
       var request = event.request;
-      // www redirects to the bare domain.
-      if (request.headers.host && request.headers.host.value === 'www.${var.domain}') {
+      // Any other name (www, the distribution's own cloudfront.net address)
+      // redirects to the domain.
+      if (request.headers.host && request.headers.host.value !== '${var.domain}') {
         return {
           statusCode: 301,
           statusDescription: 'Moved Permanently',
